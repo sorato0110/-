@@ -33,3 +33,22 @@ export interface FilterState {
   [ZoneType.FILL_INS]: boolean;
   [ZoneType.IGNORE]: boolean;
 }
+
+// --- Hypothesis Board Types ---
+
+export type EffortLevel = 'tiny' | 'small' | 'normal' | 'heavy';
+export type HypothesisStatus = 'not-started' | 'running' | 'done';
+
+export interface HypothesisItem {
+  id: string;
+  ideaTitle: string;
+  hypothesis: string;
+  platform: string;
+  platformNote: string;
+  duration: string;
+  effort: EffortLevel;
+  kpi: string;
+  status: HypothesisStatus;
+  learning: string;
+  createdAt: number;
+}

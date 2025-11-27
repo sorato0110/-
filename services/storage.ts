@@ -1,5 +1,5 @@
-import { Idea, FilterState, ZoneType, ScaleValue } from '../types';
-import { STORAGE_KEY_ITEMS, STORAGE_KEY_FILTERS, STORAGE_KEY_TITLE } from '../constants';
+import { Idea, FilterState, ZoneType, ScaleValue, HypothesisItem } from '../types';
+import { STORAGE_KEY_ITEMS, STORAGE_KEY_FILTERS, STORAGE_KEY_TITLE, STORAGE_KEY_HYPOTHESIS } from '../constants';
 
 /**
  * Calculates the score and determines the zone based on Impact and Cost.
@@ -85,4 +85,35 @@ export const loadTitle = (): string => {
 
 export const saveTitle = (title: string) => {
   localStorage.setItem(STORAGE_KEY_TITLE, title);
+};
+
+// --- Hypothesis Board Storage ---
+
+interface HypothesisStorageFormat {
+  version: number;
+  items: HypothesisItem[];
+}
+
+export const loadHypothesisItems = (): HypothesisItem[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_HYPOTHESIS);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as HypothesisStorageFormat;
+    return parsed.items || [];
+  } catch (e) {
+    console.error('Failed to load hypothesis items', e);
+    return [];
+  }
+};
+
+export const saveHypothesisItems = (items: HypothesisItem[]) => {
+  try {
+    const data: HypothesisStorageFormat = {
+      version: 1,
+      items: items,
+    };
+    localStorage.setItem(STORAGE_KEY_HYPOTHESIS, JSON.stringify(data));
+  } catch (e) {
+    console.error('Failed to save hypothesis items', e);
+  }
 };

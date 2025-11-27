@@ -4,10 +4,14 @@ import { ZONES } from './constants';
 import { loadItems, saveItems, loadFilters, saveFilters, loadTitle, saveTitle, calculateMetrics } from './services/storage';
 import { IdeaMatrix } from './components/IdeaMatrix';
 import { IdeaList } from './components/IdeaList';
-import { Download, Upload, Trash2, Plus, RefreshCw } from 'lucide-react';
+import { HypothesisBoard } from './components/HypothesisBoard';
+import { Download, Upload, Trash2, Plus, RefreshCw, LayoutGrid, FlaskConical } from 'lucide-react';
 
 const App: React.FC = () => {
-  // --- State ---
+  // --- View State ---
+  const [currentView, setCurrentView] = useState<'matrix' | 'hypothesis'>('matrix');
+
+  // --- Matrix State ---
   const [items, setItems] = useState<Idea[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     [ZoneType.QUICK_WINS]: true,
@@ -171,151 +175,189 @@ const App: React.FC = () => {
       
       {/* 1. Header & Controls */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between mb-2">
+        <div className="max-w-4xl mx-auto px-4 pt-3 pb-2">
+          <div className="flex items-center justify-between mb-4">
             <h1 className="text-lg font-bold text-slate-700">バンディット×ベイズ戦略</h1>
-            <div className="flex gap-2">
-              <button onClick={handleExport} title="Export JSON" className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors">
-                <Download size={18} />
+            
+            {/* View Switcher Tabs */}
+            <div className="flex p-1 bg-slate-100 rounded-lg">
+              <button
+                onClick={() => setCurrentView('matrix')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  currentView === 'matrix' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <LayoutGrid size={16} />
+                戦略マップ
               </button>
-              <button onClick={handleImportClick} title="Import JSON" className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors">
-                <Upload size={18} />
-              </button>
-              <input type="file" ref={fileInputRef} onChange={handleImportFile} className="hidden" accept=".json" />
-              <button onClick={handleReset} title="Reset All" className="p-2 text-slate-500 hover:text-rose-600 hover:bg-slate-100 rounded-full transition-colors">
-                <RefreshCw size={18} />
+              <button
+                onClick={() => setCurrentView('hypothesis')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  currentView === 'hypothesis' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <FlaskConical size={16} />
+                仮説検証
               </button>
             </div>
           </div>
 
-          {/* Filter Bar */}
-          <div className="flex flex-wrap gap-2">
-            {Object.values(ZONES).map((zone) => (
-              <button
-                key={zone.id}
-                onClick={() => toggleFilter(zone.id)}
-                className={`
-                  px-3 py-1.5 rounded-full text-xs font-semibold transition-all border
-                  ${filters[zone.id] ? zone.activeClass : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}
-                `}
-              >
-                {zone.label}
-              </button>
-            ))}
-          </div>
+          {/* Conditional Header Controls based on View */}
+          {currentView === 'matrix' && (
+            <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
+               {/* Filter Bar */}
+              <div className="flex flex-wrap gap-2">
+                {Object.values(ZONES).map((zone) => (
+                  <button
+                    key={zone.id}
+                    onClick={() => toggleFilter(zone.id)}
+                    className={`
+                      px-3 py-1.5 rounded-full text-xs font-semibold transition-all border
+                      ${filters[zone.id] ? zone.activeClass : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}
+                    `}
+                  >
+                    {zone.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Data Controls */}
+              <div className="flex gap-2 self-end sm:self-auto">
+                <button onClick={handleExport} title="Export JSON" className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors">
+                  <Download size={18} />
+                </button>
+                <button onClick={handleImportClick} title="Import JSON" className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors">
+                  <Upload size={18} />
+                </button>
+                <input type="file" ref={fileInputRef} onChange={handleImportFile} className="hidden" accept=".json" />
+                <button onClick={handleReset} title="Reset All" className="p-2 text-slate-500 hover:text-rose-600 hover:bg-slate-100 rounded-full transition-colors">
+                  <RefreshCw size={18} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 pt-6 space-y-8">
         
-        {/* 2. Input Form (Moved to Top) */}
-        <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-          <form onSubmit={handleAddIdea} className="space-y-4">
-            <div>
-              <input
-                type="text"
-                placeholder="タイトル (例: 新機能LP作成)"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                className="w-full px-4 py-2 text-gray-900 font-medium placeholder:text-slate-500 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Impact (効果)</label>
-                <div className="flex justify-between bg-slate-100 rounded-lg p-1">
-                  {[1, 2, 3, 4, 5].map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setImpact(v as ScaleValue)}
-                      className={`
-                        w-8 h-8 rounded-md text-sm font-bold transition-all
-                        ${impact === v ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5' : 'text-slate-600 hover:text-slate-800'}
-                      `}
-                    >
-                      {v}
-                    </button>
-                  ))}
+        {currentView === 'matrix' ? (
+          <>
+            {/* 2. Input Form (Moved to Top) */}
+            <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+              <form onSubmit={handleAddIdea} className="space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    placeholder="タイトル (例: 新機能LP作成)"
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
+                    className="w-full px-4 py-2 text-gray-900 font-medium placeholder:text-slate-500 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    required
+                  />
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Cost (工数)</label>
-                <div className="flex justify-between bg-slate-100 rounded-lg p-1">
-                  {[1, 2, 3, 4, 5].map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setCost(v as ScaleValue)}
-                      className={`
-                        w-8 h-8 rounded-md text-sm font-bold transition-all
-                        ${cost === v ? 'bg-white text-rose-500 shadow-sm ring-1 ring-black/5' : 'text-slate-600 hover:text-slate-800'}
-                      `}
-                    >
-                      {v}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Impact (効果)</label>
+                    <div className="flex justify-between bg-slate-100 rounded-lg p-1">
+                      {[1, 2, 3, 4, 5].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setImpact(v as ScaleValue)}
+                          className={`
+                            w-8 h-8 rounded-md text-sm font-bold transition-all
+                            ${impact === v ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5' : 'text-slate-600 hover:text-slate-800'}
+                          `}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Cost (工数)</label>
+                    <div className="flex justify-between bg-slate-100 rounded-lg p-1">
+                      {[1, 2, 3, 4, 5].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setCost(v as ScaleValue)}
+                          className={`
+                            w-8 h-8 rounded-md text-sm font-bold transition-all
+                            ${cost === v ? 'bg-white text-rose-500 shadow-sm ring-1 ring-black/5' : 'text-slate-600 hover:text-slate-800'}
+                          `}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
+                <div>
+                  <textarea
+                    placeholder="メモ (任意)"
+                    value={memo}
+                    onChange={e => setMemo(e.target.value)}
+                    rows={2}
+                    className="w-full px-4 py-2 text-gray-900 font-medium placeholder:text-slate-500 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-md hover:shadow-lg transition-all active:scale-[0.99]"
+                >
+                  保存する
+                </button>
+              </form>
+            </section>
+
+            {/* 3. Matrix Visualization */}
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <input
+                  type="text"
+                  value={projectTitle}
+                  onChange={(e) => setProjectTitle(e.target.value)}
+                  placeholder="マップのタイトルを入力..."
+                  className="w-full font-bold text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-0 focus:outline-none transition-all p-0 text-lg placeholder:text-slate-300"
+                />
               </div>
-            </div>
-            <div>
-              <textarea
-                placeholder="メモ (任意)"
-                value={memo}
-                onChange={e => setMemo(e.target.value)}
-                rows={2}
-                className="w-full px-4 py-2 text-gray-900 font-medium placeholder:text-slate-500 bg-white rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none"
+              <IdeaMatrix items={filteredItems} onItemClick={handleChartItemClick} />
+            </section>
+
+            {/* 4. List View */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                 <h2 className="font-bold text-slate-700">優先度順リスト</h2>
+                 <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">{filteredItems.length} items</span>
+              </div>
+              <IdeaList 
+                items={filteredItems} 
+                onDelete={handleDelete} 
+                highlightedId={highlightedId}
               />
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-md hover:shadow-lg transition-all active:scale-[0.99]"
-            >
-              保存する
-            </button>
-          </form>
-        </section>
-
-        {/* 3. Matrix Visualization */}
-        <section>
-          <div className="flex items-center justify-between mb-2">
-            <input
-              type="text"
-              value={projectTitle}
-              onChange={(e) => setProjectTitle(e.target.value)}
-              placeholder="マップのタイトルを入力..."
-              className="w-full font-bold text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-0 focus:outline-none transition-all p-0 text-lg placeholder:text-slate-300"
-            />
-          </div>
-          <IdeaMatrix items={filteredItems} onItemClick={handleChartItemClick} />
-        </section>
-
-        {/* 4. List View */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-             <h2 className="font-bold text-slate-700">優先度順リスト</h2>
-             <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">{filteredItems.length} items</span>
-          </div>
-          <IdeaList 
-            items={filteredItems} 
-            onDelete={handleDelete} 
-            highlightedId={highlightedId}
-          />
-        </section>
+            </section>
+          </>
+        ) : (
+          /* Hypothesis Board View */
+          <HypothesisBoard />
+        )}
       </main>
 
-      {/* Floating Action Button for Mobile */}
-      <div className="md:hidden fixed bottom-6 right-6 z-50">
-        <button
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top (Form)
-          }}
-          className="bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
-        >
-          <Plus size={24} />
-        </button>
-      </div>
+      {/* Floating Action Button for Mobile (Only in Matrix View) */}
+      {currentView === 'matrix' && (
+        <div className="md:hidden fixed bottom-6 right-6 z-50">
+          <button
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top (Form)
+            }}
+            className="bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
+          >
+            <Plus size={24} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
