@@ -1,5 +1,6 @@
-import { Idea, FilterState, ZoneType, ScaleValue, HypothesisItem } from '../types';
-import { STORAGE_KEY_ITEMS, STORAGE_KEY_FILTERS, STORAGE_KEY_TITLE, STORAGE_KEY_HYPOTHESIS } from '../constants';
+
+import { Idea, FilterState, ZoneType, ScaleValue, HypothesisItem, ExperimentLog, ConfidenceData, KpiConfigItem } from '../types';
+import { STORAGE_KEY_ITEMS, STORAGE_KEY_FILTERS, STORAGE_KEY_TITLE, STORAGE_KEY_HYPOTHESIS, STORAGE_KEY_EXPERIMENTS, STORAGE_KEY_CONFIDENCE, STORAGE_KEY_KPI_CONFIG, DEFAULT_KPI_CONFIG } from '../constants';
 
 /**
  * Calculates the score and determines the zone based on Impact and Cost.
@@ -22,11 +23,6 @@ export const calculateMetrics = (impact: ScaleValue, cost: ScaleValue): { score:
     if (cost <= 2) zone = ZoneType.FILL_INS;
     else zone = ZoneType.IGNORE;
   }
-
-  // Refined Logic based on Matrix Visual Quadtrants roughly:
-  // If we split strictly down the middle (2.5), 3 is "High".
-  // Impact 3,4,5 = High. Cost 1,2 = Low. Cost 3,4,5 = High.
-  // This matches the logic above.
 
   return { score, zone };
 };
@@ -116,4 +112,51 @@ export const saveHypothesisItems = (items: HypothesisItem[]) => {
   } catch (e) {
     console.error('Failed to save hypothesis items', e);
   }
+};
+
+// --- Confidence Board Storage ---
+
+export const loadExperiments = (): ExperimentLog[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_EXPERIMENTS);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const saveExperiments = (items: ExperimentLog[]) => {
+  localStorage.setItem(STORAGE_KEY_EXPERIMENTS, JSON.stringify(items));
+};
+
+export const loadConfidenceData = (): ConfidenceData[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CONFIDENCE);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const saveConfidenceData = (items: ConfidenceData[]) => {
+  localStorage.setItem(STORAGE_KEY_CONFIDENCE, JSON.stringify(items));
+};
+
+export const loadKpiConfig = (): KpiConfigItem[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_KPI_CONFIG);
+    if (!raw) return DEFAULT_KPI_CONFIG;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_KPI_CONFIG;
+  } catch (e) {
+    return DEFAULT_KPI_CONFIG;
+  }
+};
+
+export const saveKpiConfig = (config: KpiConfigItem[]) => {
+  localStorage.setItem(STORAGE_KEY_KPI_CONFIG, JSON.stringify(config));
 };

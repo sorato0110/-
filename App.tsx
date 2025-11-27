@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Idea, ZoneType, ScaleValue, FilterState } from './types';
 import { ZONES } from './constants';
@@ -5,11 +6,12 @@ import { loadItems, saveItems, loadFilters, saveFilters, loadTitle, saveTitle, c
 import { IdeaMatrix } from './components/IdeaMatrix';
 import { IdeaList } from './components/IdeaList';
 import { HypothesisBoard } from './components/HypothesisBoard';
-import { Download, Upload, Trash2, Plus, RefreshCw, LayoutGrid, FlaskConical } from 'lucide-react';
+import { ConfidenceBoard } from './components/ConfidenceBoard';
+import { Download, Upload, Trash2, Plus, RefreshCw, LayoutGrid, FlaskConical, TrendingUp } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- View State ---
-  const [currentView, setCurrentView] = useState<'matrix' | 'hypothesis'>('matrix');
+  const [currentView, setCurrentView] = useState<'matrix' | 'hypothesis' | 'confidence'>('matrix');
 
   // --- Matrix State ---
   const [items, setItems] = useState<Idea[]>([]);
@@ -177,13 +179,14 @@ const App: React.FC = () => {
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 pt-3 pb-2">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-lg font-bold text-slate-700">バンディット×ベイズ戦略</h1>
+            <h1 className="text-lg font-bold text-slate-700 hidden sm:block">バンディット×ベイズ戦略</h1>
+            <h1 className="text-lg font-bold text-slate-700 sm:hidden">戦略ボード</h1>
             
             {/* View Switcher Tabs */}
-            <div className="flex p-1 bg-slate-100 rounded-lg">
+            <div className="flex p-1 bg-slate-100 rounded-lg overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setCurrentView('matrix')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                   currentView === 'matrix' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -192,12 +195,21 @@ const App: React.FC = () => {
               </button>
               <button
                 onClick={() => setCurrentView('hypothesis')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                   currentView === 'hypothesis' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 <FlaskConical size={16} />
                 仮説検証
+              </button>
+              <button
+                onClick={() => setCurrentView('confidence')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+                  currentView === 'confidence' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <TrendingUp size={16} />
+                自信度分析
               </button>
             </div>
           </div>
@@ -241,7 +253,7 @@ const App: React.FC = () => {
 
       <main className="max-w-4xl mx-auto px-4 pt-6 space-y-8">
         
-        {currentView === 'matrix' ? (
+        {currentView === 'matrix' && (
           <>
             {/* 2. Input Form (Moved to Top) */}
             <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
@@ -339,9 +351,14 @@ const App: React.FC = () => {
               />
             </section>
           </>
-        ) : (
-          /* Hypothesis Board View */
+        )}
+
+        {currentView === 'hypothesis' && (
           <HypothesisBoard />
+        )}
+
+        {currentView === 'confidence' && (
+          <ConfidenceBoard />
         )}
       </main>
 

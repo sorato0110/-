@@ -1,3 +1,4 @@
+
 export type ScaleValue = 1 | 2 | 3 | 4 | 5;
 
 export enum ZoneType {
@@ -51,4 +52,38 @@ export interface HypothesisItem {
   status: HypothesisStatus;
   learning: string;
   createdAt: number;
+}
+
+// --- Confidence Analysis Board Types ---
+
+export interface ExperimentLog {
+  id: string;
+  ideaTitle: string;
+  testTitle: string;
+  period: string;
+  reach: number;
+  responses: number;
+  sales: number;
+  memo: string;
+  // Analysis
+  successFactors: string;
+  failureFactors: string;
+  feedback: string;
+  createdAt: number;
+}
+
+export type ImpactType = 'plus-large' | 'plus-small' | 'neutral' | 'minus-small' | 'minus-large';
+
+export interface ConfidenceData {
+  ideaTitle: string;
+  currentConfidence: number; // 0-100
+  lastImpact: ImpactType;
+  memo: string;
+  updatedAt: number;
+}
+
+export interface KpiConfigItem {
+  id: 'reach' | 'responses' | 'sales';
+  label: string;
+  helper: string;
 }

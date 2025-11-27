@@ -1,9 +1,13 @@
-import { ZoneType, ZoneConfig, EffortLevel, HypothesisStatus } from './types';
+
+import { ZoneType, ZoneConfig, EffortLevel, HypothesisStatus, ImpactType, KpiConfigItem } from './types';
 
 export const STORAGE_KEY_ITEMS = 'ideaMatrix:v1:items';
 export const STORAGE_KEY_FILTERS = 'ideaMatrix:v1:filters';
 export const STORAGE_KEY_TITLE = 'ideaMatrix:v1:title';
 export const STORAGE_KEY_HYPOTHESIS = 'hypothesisPracticeBoard:v1';
+export const STORAGE_KEY_EXPERIMENTS = 'hypothesisAnalysisBoard:v1:experiments';
+export const STORAGE_KEY_CONFIDENCE = 'hypothesisAnalysisBoard:v1:confidence';
+export const STORAGE_KEY_KPI_CONFIG = 'hypothesisAnalysisBoard:v1:kpiConfig';
 
 export const ZONES: Record<ZoneType, ZoneConfig> = {
   [ZoneType.QUICK_WINS]: {
@@ -63,4 +67,19 @@ export const PLATFORM_OPTIONS = [
   'フリマアプリ',
   '店舗POP / チラシ',
   'その他',
+];
+
+// Confidence Board Constants
+export const IMPACT_OPTIONS: Record<ImpactType, { label: string, color: string }> = {
+  'plus-large': { label: 'かなりプラス (++20%)', color: 'text-emerald-600' },
+  'plus-small': { label: '少しプラス (+5-10%)', color: 'text-teal-500' },
+  'neutral': { label: 'ほぼ変わらない', color: 'text-slate-500' },
+  'minus-small': { label: '少しマイナス (-5-10%)', color: 'text-amber-500' },
+  'minus-large': { label: 'かなりマイナス (-20%)', color: 'text-rose-600' },
+};
+
+export const DEFAULT_KPI_CONFIG: KpiConfigItem[] = [
+  { id: 'reach', label: 'リーチ(表示)', helper: 'どれくらいの人に届いたか' },
+  { id: 'responses', label: '反応数', helper: 'いいね・コメント・クリックの合計など' },
+  { id: 'sales', label: '売上/成約', helper: '購入や問い合わせなど、ゴールにつながる数' }
 ];
