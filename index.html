@@ -13,7 +13,7 @@
       ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      .animate-in { animation: animateIn 0.2s ease-out forwards; opacity: 0; }
+      .animate-in { animation: animateIn 0.3s ease-out forwards; opacity: 0; }
       @keyframes animateIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
     <script type="importmap">
@@ -37,11 +37,11 @@
       import { 
         Trash2, Plus, RefreshCw, LayoutGrid, FlaskConical, TrendingUp, 
         Download, Upload, Info, ChevronDown, ChevronUp, CheckCircle2, 
-        Clock, AlertCircle, Settings, X 
+        Clock, AlertCircle, Settings, X, Crown, ArrowRight, Activity
       } from 'lucide-react';
 
       // ==========================================
-      // 1. DEFINITIONS & TYPES
+      // 1. CONSTANTS & DEFINITIONS
       // ==========================================
 
       const ZoneType = {
@@ -50,10 +50,6 @@
         FILL_INS: 'FILL_INS',
         IGNORE: 'IGNORE',
       };
-
-      // ==========================================
-      // 2. CONSTANTS
-      // ==========================================
 
       const STORAGE_KEY_ITEMS = 'ideaMatrix:v1:items';
       const STORAGE_KEY_FILTERS = 'ideaMatrix:v1:filters';
@@ -137,7 +133,7 @@
       ];
 
       // ==========================================
-      // 3. STORAGE & HELPER FUNCTIONS
+      // 2. HELPER FUNCTIONS & STORAGE
       // ==========================================
 
       const calculateMetrics = (impact, cost) => {
@@ -153,74 +149,55 @@
         return { score, zone };
       };
 
-      const loadItems = () => {
+      // --- LocalStorage Wrappers ---
+      const safeJSONParse = (key, fallback) => {
         try {
-          const raw = localStorage.getItem(STORAGE_KEY_ITEMS);
-          return raw ? JSON.parse(raw) : [];
-        } catch (e) { return []; }
-      };
-      const saveItems = (items) => localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(items));
-
-      const loadFilters = () => {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY_FILTERS);
-          return raw ? JSON.parse(raw) : {
-            [ZoneType.QUICK_WINS]: true,
-            [ZoneType.MAJOR_PROJECTS]: true,
-            [ZoneType.FILL_INS]: true,
-            [ZoneType.IGNORE]: true,
-          };
+          const item = localStorage.getItem(key);
+          return item ? JSON.parse(item) : fallback;
         } catch (e) {
-          return { [ZoneType.QUICK_WINS]: true, [ZoneType.MAJOR_PROJECTS]: true, [ZoneType.FILL_INS]: true, [ZoneType.IGNORE]: true };
+          console.error(`Error loading ${key}`, e);
+          return fallback;
         }
       };
+
+      const loadItems = () => safeJSONParse(STORAGE_KEY_ITEMS, []);
+      const saveItems = (items) => localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(items));
+
+      const loadFilters = () => safeJSONParse(STORAGE_KEY_FILTERS, {
+        [ZoneType.QUICK_WINS]: true,
+        [ZoneType.MAJOR_PROJECTS]: true,
+        [ZoneType.FILL_INS]: true,
+        [ZoneType.IGNORE]: true,
+      });
       const saveFilters = (filters) => localStorage.setItem(STORAGE_KEY_FILTERS, JSON.stringify(filters));
 
       const loadTitle = () => localStorage.getItem(STORAGE_KEY_TITLE) || '';
       const saveTitle = (title) => localStorage.setItem(STORAGE_KEY_TITLE, title);
 
       const loadHypothesisItems = () => {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY_HYPOTHESIS);
-          const parsed = raw ? JSON.parse(raw) : {};
-          return parsed.items || [];
-        } catch (e) { return []; }
+        const data = safeJSONParse(STORAGE_KEY_HYPOTHESIS, {});
+        return data.items || [];
       };
       const saveHypothesisItems = (items) => localStorage.setItem(STORAGE_KEY_HYPOTHESIS, JSON.stringify({ version: 1, items }));
 
-      const loadExperiments = () => {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY_EXPERIMENTS);
-          const parsed = raw ? JSON.parse(raw) : [];
-          return Array.isArray(parsed) ? parsed : [];
-        } catch (e) { return []; }
-      };
+      const loadExperiments = () => safeJSONParse(STORAGE_KEY_EXPERIMENTS, []);
       const saveExperiments = (items) => localStorage.setItem(STORAGE_KEY_EXPERIMENTS, JSON.stringify(items));
 
-      const loadConfidenceData = () => {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY_CONFIDENCE);
-          const parsed = raw ? JSON.parse(raw) : [];
-          return Array.isArray(parsed) ? parsed : [];
-        } catch (e) { return []; }
-      };
+      const loadConfidenceData = () => safeJSONParse(STORAGE_KEY_CONFIDENCE, []);
       const saveConfidenceData = (items) => localStorage.setItem(STORAGE_KEY_CONFIDENCE, JSON.stringify(items));
 
       const loadKpiConfig = () => {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY_KPI_CONFIG);
-          const parsed = raw ? JSON.parse(raw) : DEFAULT_KPI_CONFIG;
-          return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_KPI_CONFIG;
-        } catch (e) { return DEFAULT_KPI_CONFIG; }
+        const parsed = safeJSONParse(STORAGE_KEY_KPI_CONFIG, DEFAULT_KPI_CONFIG);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_KPI_CONFIG;
       };
       const saveKpiConfig = (config) => localStorage.setItem(STORAGE_KEY_KPI_CONFIG, JSON.stringify(config));
 
       // ==========================================
-      // 4. SUB-COMPONENTS
+      // 3. COMPONENTS
       // ==========================================
 
       // --- IdeaMatrix ---
-      const IdeaMatrix = ({ items, onItemClick }) => {
+      const IdeaMatrix = ({ items, onItemClick, hypothesisMap, confidenceMap }) => {
         const getPos = (val) => 10 + ((val - 1) * 20);
         return (
           <div className="w-full aspect-square max-w-lg mx-auto relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden select-none">
@@ -239,8 +216,11 @@
                 const bottomPct = getPos(idea.impact);
                 const leftPct = getPos(idea.cost);
                 const zoneConfig = ZONES[idea.zone];
-                // Fallback for safety
                 if (!zoneConfig) return null;
+
+                // Status Indicators
+                const hasHypothesis = hypothesisMap[idea.title];
+                const confidence = confidenceMap[idea.title];
                 
                 return (
                   <div
@@ -249,7 +229,17 @@
                     className="absolute group cursor-pointer transition-all duration-300 hover:z-50"
                     style={{ bottom: `${bottomPct}%`, left: `${leftPct}%`, transform: 'translate(-50%, 50%)' }}
                   >
-                    <div className={`w-4 h-4 rounded-full shadow-sm border-2 border-white ${zoneConfig.activeClass.split(' ')[0]} transition-transform group-hover:scale-125`}></div>
+                    <div className="relative">
+                      <div className={`w-4 h-4 rounded-full shadow-sm border-2 border-white ${zoneConfig.activeClass.split(' ')[0]} transition-transform group-hover:scale-125`}></div>
+                      {/* Icons for status */}
+                      {confidence?.currentConfidence >= 80 && (
+                        <div className="absolute -top-3 -right-2 text-yellow-500 drop-shadow-sm bg-white rounded-full p-0.5"><Crown size={12} fill="currentColor" /></div>
+                      )}
+                      {hasHypothesis && !confidence && (
+                        <div className="absolute -top-3 -right-2 text-indigo-500 drop-shadow-sm bg-white rounded-full p-0.5"><FlaskConical size={12} fill="currentColor" /></div>
+                      )}
+                    </div>
+                    
                     <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 min-w-[80px] w-max max-w-[120px] pointer-events-none z-10">
                       <div className={`px-2 py-1 text-[10px] font-medium rounded shadow-sm backdrop-blur-sm bg-white/90 border border-slate-200 text-center truncate opacity-0 group-hover:opacity-100 transition-opacity duration-200 md:opacity-100 md:bg-transparent md:border-0 md:shadow-none md:font-semibold md:text-slate-700 md:text-xs`}>
                         {idea.title}
@@ -264,7 +254,7 @@
       };
 
       // --- IdeaList ---
-      const IdeaList = ({ items, onDelete, highlightedId }) => {
+      const IdeaList = ({ items, onDelete, highlightedId, onPlanTest, confidenceMap }) => {
         if (items.length === 0) return <div className="text-center py-8 text-slate-400 text-sm">表示するアイデアがありません。<br/>フォームから追加してください。</div>;
         return (
           <div className="space-y-3">
@@ -272,6 +262,8 @@
               const zoneConfig = ZONES[idea.zone];
               if (!zoneConfig) return null;
               const isHighlighted = highlightedId === idea.id;
+              const confidence = confidenceMap[idea.title];
+
               return (
                 <div key={idea.id} id={`item-${idea.id}`} className={`relative flex items-start gap-3 p-4 rounded-lg border transition-all duration-300 ${isHighlighted ? 'ring-2 ring-indigo-400 bg-white shadow-md transform scale-[1.02]' : 'bg-white border-slate-200 shadow-sm hover:shadow-md'}`}>
                   <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-full shrink-0 font-bold text-lg ${zoneConfig.bg} ${zoneConfig.color}`}>
@@ -283,10 +275,23 @@
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium whitespace-nowrap ${zoneConfig.bg} ${zoneConfig.color} ${zoneConfig.border}`}>{zoneConfig.label}</span>
                     </div>
                     {idea.memo && <p className="text-sm text-slate-600 mb-2 whitespace-pre-wrap break-words line-clamp-2">{idea.memo}</p>}
-                    <div className="flex items-center gap-4 text-xs text-slate-400 font-mono mt-1">
-                      <span>Impact: {idea.impact}</span>
-                      <span>Cost: {idea.cost}</span>
+                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                      <div className="flex items-center gap-3 text-xs text-slate-400 font-mono">
+                        <span>Impact: {idea.impact}</span>
+                        <span>Cost: {idea.cost}</span>
+                      </div>
+                      {/* Workflow Button */}
+                      <button onClick={() => onPlanTest(idea)} className="text-xs flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded border border-indigo-100 transition-colors ml-auto">
+                        <FlaskConical size={12} />
+                        検証計画を立てる
+                      </button>
                     </div>
+                    {confidence && (
+                      <div className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald-600">
+                        <TrendingUp size={12} />
+                        自信度: {confidence.currentConfidence}%
+                      </div>
+                    )}
                   </div>
                   <button onClick={(e) => { e.stopPropagation(); if(window.confirm(`「${idea.title}」を削除しますか？`)) onDelete(idea.id); }} className="text-slate-300 hover:text-rose-500 p-2 hover:bg-rose-50 rounded-full transition-colors">
                     <Trash2 size={16} />
@@ -299,7 +304,7 @@
       };
 
       // --- Hypothesis Components ---
-      const HypothesisCard = ({ item, onUpdate, onDelete }) => {
+      const HypothesisCard = ({ item, onUpdate, onDelete, onLogResult }) => {
         const isDone = item.status === 'done';
         const statusConfig = STATUS_LABELS[item.status];
         if (!statusConfig) return null;
@@ -316,9 +321,15 @@
                 {isDone && <CheckCircle2 size={18} className="text-emerald-600" />}
                 {item.status === 'running' && <Clock size={18} className="text-indigo-500 animate-pulse" />}
               </div>
-              <button onClick={() => onDelete(item.id)} className="text-slate-400 hover:text-rose-500 p-2 rounded-full hover:bg-rose-50 transition-colors">
-                <Trash2 size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                 <button onClick={() => onLogResult(item)} className="text-xs flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-300 text-slate-600 hover:text-indigo-600 hover:border-indigo-300 rounded-lg transition-colors shadow-sm">
+                   <Activity size={14} />
+                   結果を記録
+                 </button>
+                 <button onClick={() => onDelete(item.id)} className="text-slate-400 hover:text-rose-500 p-2 rounded-full hover:bg-rose-50 transition-colors">
+                   <Trash2 size={18} />
+                 </button>
+              </div>
             </div>
             <div className="p-5 grid grid-cols-1 md:grid-cols-12 gap-6">
               <div className="md:col-span-4 space-y-3">
@@ -350,7 +361,7 @@
         );
       };
 
-      const HypothesisBoard = () => {
+      const HypothesisBoard = ({ initialData, onNavigateResult }) => {
         const [items, setItems] = useState([]);
         const [inputIdea, setInputIdea] = useState('');
         const [inputHypothesis, setInputHypothesis] = useState('');
@@ -359,6 +370,14 @@
 
         useEffect(() => { setItems(loadHypothesisItems()); }, []);
         useEffect(() => { saveHypothesisItems(items); }, [items]);
+
+        // Auto-fill form from navigation
+        useEffect(() => {
+          if (initialData?.ideaTitle) {
+            setInputIdea(initialData.ideaTitle);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }, [initialData]);
 
         const handleAddItem = () => {
           if (!inputIdea.trim() || !inputHypothesis.trim()) return;
@@ -376,7 +395,7 @@
             createdAt: Date.now(),
           };
           setItems(prev => [newItem, ...prev]);
-          setInputIdea('');
+          if (!initialData) setInputIdea('');
           setInputHypothesis('');
         };
         const handleUpdateItem = (id, updates) => setItems(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
@@ -392,7 +411,7 @@
         }, [items, sortOrder, statusFilter]);
 
         return (
-          <div className="space-y-8 pb-20">
+          <div className="space-y-8 pb-20 animate-in">
             <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
               <div className="mb-4 pb-2 border-b border-slate-100"><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><span className="bg-indigo-600 text-white text-xs px-2 py-0.5 rounded-full">Step 1</span>アイデアから仮説をつくる</h2></div>
               <div className="space-y-4">
@@ -415,7 +434,7 @@
                 </div>
               </div>
               <div className="space-y-4">
-                {filteredItems.length === 0 ? <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-400">まだ仮説がありません。<br/>Step 1 から追加してください。</div> : filteredItems.map(item => <HypothesisCard key={item.id} item={item} onUpdate={handleUpdateItem} onDelete={handleDeleteItem} />)}
+                {filteredItems.length === 0 ? <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-400">まだ仮説がありません。<br/>Step 1 から追加してください。</div> : filteredItems.map(item => <HypothesisCard key={item.id} item={item} onUpdate={handleUpdateItem} onDelete={handleDeleteItem} onLogResult={onNavigateResult} />)}
               </div>
             </section>
           </div>
@@ -488,7 +507,7 @@
         );
       };
 
-      const ConfidenceBoard = () => {
+      const ConfidenceBoard = ({ initialData, onNavigateBack }) => {
         const [experiments, setExperiments] = useState([]);
         const [confidenceData, setConfidenceData] = useState([]);
         const [kpiConfig, setKpiConfig] = useState(DEFAULT_KPI_CONFIG);
@@ -507,6 +526,16 @@
         useEffect(() => { setExperiments(loadExperiments()); setConfidenceData(loadConfidenceData()); setKpiConfig(loadKpiConfig()); }, []);
         useEffect(() => { saveExperiments(experiments); }, [experiments]);
         useEffect(() => { saveConfidenceData(confidenceData); }, [confidenceData]);
+
+        // Auto-fill form from navigation
+        useEffect(() => {
+          if (initialData?.ideaTitle) {
+            setIdeaTitle(initialData.ideaTitle);
+            if (initialData.testTitle) setTestTitle(initialData.testTitle);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }, [initialData]);
+
         useEffect(() => {
           const uniqueIdeas = Array.from(new Set(experiments.map(e => e.ideaTitle)));
           setConfidenceData(prev => {
@@ -531,7 +560,11 @@
             memo: memo.trim(), successFactors: '', failureFactors: '', feedback: '', createdAt: Date.now(),
           };
           setExperiments(prev => [newExp, ...prev]);
-          setIdeaTitle(''); setTestTitle(''); setPeriod(''); setReach(''); setResponses(''); setSales(''); setMemo('');
+          if (!initialData) {
+            setIdeaTitle('');
+            setTestTitle('');
+          }
+          setPeriod(''); setReach(''); setResponses(''); setSales(''); setMemo('');
         };
         const handleUpdateExperiment = (id, updates) => setExperiments(prev => prev.map(exp => exp.id === id ? { ...exp, ...updates } : exp));
         const handleDeleteExperiment = (id) => { if (window.confirm('この実験記録を削除しますか？')) setExperiments(prev => prev.filter(e => e.id !== id)); };
@@ -555,7 +588,7 @@
         const uniqueIdeaTitles = useMemo(() => Array.from(new Set(experiments.map(e => e.ideaTitle))), [experiments]);
 
         return (
-          <div className="space-y-10 pb-20 relative">
+          <div className="space-y-10 pb-20 relative animate-in">
             {isKpiModalOpen && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in">
                 <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
@@ -584,18 +617,20 @@
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="md:col-span-1"><label className="block text-xs font-bold text-slate-500 mb-1">実施期間</label><input type="text" value={period} onChange={e => setPeriod(e.target.value)} placeholder="例：3日間" className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm" /></div>
+                  
+                  {/* KPI Inputs as 3 Distinct Cards */}
                   <div className="md:col-span-3">
-                    <div className="flex items-center justify-between mb-1">
+                     <div className="flex items-center justify-between mb-2">
                       <label className="block text-xs font-bold text-slate-500">数値指標</label>
-                      <button onClick={openKpiModal} className="text-xs flex items-center gap-1 text-slate-400 hover:text-indigo-600 transition-colors"><Settings size={12} />編集</button>
+                      <button onClick={openKpiModal} className="text-xs flex items-center gap-1 text-slate-400 hover:text-indigo-600 transition-colors bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm"><Settings size={12} />指標を編集</button>
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       {kpiConfig.map((kpi) => {
                         const { value, setValue } = getKpiInputProps(kpi.id);
                         return (
-                          <div key={kpi.id} className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                            <label className="block text-xs font-bold text-slate-600 mb-1 truncate" title={kpi.label}>{kpi.label}</label>
-                            <input type="number" value={value} onChange={e => setValue(e.target.value)} className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0" />
+                          <div key={kpi.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                            <label className="block text-xs font-bold text-slate-700 mb-1 truncate" title={kpi.label}>{kpi.label}</label>
+                            <input type="number" value={value} onChange={e => setValue(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0" />
                             <div className="text-[10px] text-slate-400 mt-1 truncate leading-tight" title={kpi.helper}>{kpi.helper}</div>
                           </div>
                         );
@@ -620,9 +655,17 @@
               </div>
             </section>
             <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-              <div className="mb-4 pb-2 border-b border-slate-100"><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-2"><span className="bg-indigo-600 text-white text-xs px-2 py-0.5 rounded-full">Step 3</span>仮説の自信度をアップデートする</h2><p className="text-xs text-slate-500 leading-relaxed">小さな実験で得られたデータやフィードバックをもとに、「このアイデアがうまくいく確率」を自分なりに更新していきましょう。<br/>これはベイズ更新の “ざっくりバージョン” です。</p></div>
+              <div className="mb-4 pb-2 border-b border-slate-100">
+                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-2"><span className="bg-indigo-600 text-white text-xs px-2 py-0.5 rounded-full">Step 3</span>仮説の自信度をアップデートする</h2>
+                <p className="text-xs text-slate-500 leading-relaxed">小さな実験で得られたデータやフィードバックをもとに、「このアイデアがうまくいく確率」を自分なりに更新していきましょう。<br/>これはベイズ更新の “ざっくりバージョン” です。</p>
+              </div>
               <div className="space-y-6">
                 {confidenceData.length === 0 ? <div className="text-center py-6 text-slate-400">実験を追加すると、ここに自信度トラッカーが表示されます。</div> : confidenceData.map(conf => <ConfidenceTracker key={conf.ideaTitle} data={conf} onUpdate={handleUpdateConfidence} />)}
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-100 flex justify-center">
+                 <button onClick={onNavigateBack} className="text-sm font-medium text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors">
+                   戦略マップに戻ってImpactを見直す <ArrowRight size={14} />
+                 </button>
               </div>
             </section>
           </div>
@@ -630,11 +673,13 @@
       };
 
       // ==========================================
-      // 5. MAIN APP
+      // 4. MAIN APP
       // ==========================================
 
       const App = () => {
         const [currentView, setCurrentView] = useState('matrix');
+        const [navData, setNavData] = useState(null); // Data passed between views
+
         const [items, setItems] = useState([]);
         const [filters, setFilters] = useState({
           [ZoneType.QUICK_WINS]: true,
@@ -650,16 +695,51 @@
         const [impact, setImpact] = useState(3);
         const [cost, setCost] = useState(3);
 
+        // Global Data needed for cross-view indicators
+        const [hypothesisItems, setHypothesisItems] = useState([]);
+        const [confidenceData, setConfidenceData] = useState([]);
+
         useEffect(() => {
           setItems(loadItems());
           setFilters(loadFilters());
           setProjectTitle(loadTitle());
+          setHypothesisItems(loadHypothesisItems());
+          setConfidenceData(loadConfidenceData());
         }, []);
 
         useEffect(() => { saveItems(items); }, [items]);
         useEffect(() => { saveFilters(filters); }, [filters]);
         useEffect(() => { saveTitle(projectTitle); }, [projectTitle]);
         useEffect(() => { if (highlightedId) { const timer = setTimeout(() => setHighlightedId(null), 2000); return () => clearTimeout(timer); } }, [highlightedId]);
+
+        // Helper maps for O(1) lookups
+        const hypothesisMap = useMemo(() => {
+           const map = {};
+           hypothesisItems.forEach(i => map[i.ideaTitle] = i);
+           return map;
+        }, [hypothesisItems]);
+
+        const confidenceMap = useMemo(() => {
+           const map = {};
+           confidenceData.forEach(c => map[c.ideaTitle] = c);
+           return map;
+        }, [confidenceData]);
+
+        // Navigation Handlers
+        const handleNavigateToHypothesis = (idea) => {
+          setNavData({ ideaTitle: idea.title });
+          setCurrentView('hypothesis');
+        };
+
+        const handleNavigateToConfidence = (item) => {
+          setNavData({ ideaTitle: item.ideaTitle, testTitle: item.hypothesis });
+          setCurrentView('confidence');
+        };
+        
+        const handleNavigateBackToMap = () => {
+          setNavData(null);
+          setCurrentView('matrix');
+        };
 
         const handleAddIdea = (e) => {
           e.preventDefault();
@@ -781,16 +861,16 @@
                   </section>
                   <section>
                     <div className="flex items-center justify-between mb-2"><input type="text" value={projectTitle} onChange={(e) => setProjectTitle(e.target.value)} placeholder="マップのタイトルを入力..." className="w-full font-bold text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-0 focus:outline-none transition-all p-0 text-lg placeholder:text-slate-300" /></div>
-                    <IdeaMatrix items={filteredItems} onItemClick={handleChartItemClick} />
+                    <IdeaMatrix items={filteredItems} onItemClick={handleChartItemClick} hypothesisMap={hypothesisMap} confidenceMap={confidenceMap} />
                   </section>
                   <section>
                     <div className="flex items-center justify-between mb-4"><h2 className="font-bold text-slate-700">優先度順リスト</h2><span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">{filteredItems.length} items</span></div>
-                    <IdeaList items={filteredItems} onDelete={handleDelete} highlightedId={highlightedId} />
+                    <IdeaList items={filteredItems} onDelete={handleDelete} highlightedId={highlightedId} onPlanTest={handleNavigateToHypothesis} confidenceMap={confidenceMap} />
                   </section>
                 </>
               )}
-              {currentView === 'hypothesis' && <HypothesisBoard />}
-              {currentView === 'confidence' && <ConfidenceBoard />}
+              {currentView === 'hypothesis' && <HypothesisBoard initialData={navData} onNavigateResult={handleNavigateToConfidence} />}
+              {currentView === 'confidence' && <ConfidenceBoard initialData={navData} onNavigateBack={handleNavigateBackToMap} />}
             </main>
             {currentView === 'matrix' && (
               <div className="md:hidden fixed bottom-6 right-6 z-50">
