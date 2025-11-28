@@ -584,13 +584,16 @@
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="md:col-span-1"><label className="block text-xs font-bold text-slate-500 mb-1">実施期間</label><input type="text" value={period} onChange={e => setPeriod(e.target.value)} placeholder="例：3日間" className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm" /></div>
-                  <div className="md:col-span-3 relative bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <button onClick={openKpiModal} className="absolute top-2 right-2 text-xs flex items-center gap-1 text-slate-400 hover:text-indigo-600 transition-colors bg-white px-2 py-1 rounded border border-slate-200 shadow-sm"><Settings size={12} />指標を編集</button>
+                  <div className="md:col-span-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-500">数値指標</label>
+                      <button onClick={openKpiModal} className="text-xs flex items-center gap-1 text-slate-400 hover:text-indigo-600 transition-colors"><Settings size={12} />編集</button>
+                    </div>
                     <div className="grid grid-cols-3 gap-3">
                       {kpiConfig.map((kpi) => {
                         const { value, setValue } = getKpiInputProps(kpi.id);
                         return (
-                          <div key={kpi.id}>
+                          <div key={kpi.id} className="bg-slate-50 p-3 rounded-lg border border-slate-200">
                             <label className="block text-xs font-bold text-slate-600 mb-1 truncate" title={kpi.label}>{kpi.label}</label>
                             <input type="number" value={value} onChange={e => setValue(e.target.value)} className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0" />
                             <div className="text-[10px] text-slate-400 mt-1 truncate leading-tight" title={kpi.helper}>{kpi.helper}</div>
