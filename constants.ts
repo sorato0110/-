@@ -58,17 +58,6 @@ export const STATUS_LABELS: Record<HypothesisStatus, { label: string, color: str
   'done': { label: '完了', color: 'bg-emerald-100 text-emerald-800' },
 };
 
-export const PLATFORM_OPTIONS = [
-  'X（旧Twitter）',
-  'Instagram',
-  'YouTube',
-  'ブログ / note',
-  'メルマガ',
-  'フリマアプリ',
-  '店舗POP / チラシ',
-  'その他',
-];
-
 // Confidence Board Constants
 export const IMPACT_OPTIONS: Record<ImpactType, { label: string, color: string }> = {
   'plus-large': { label: 'かなりプラス (++20%)', color: 'text-emerald-600' },
@@ -79,7 +68,7 @@ export const IMPACT_OPTIONS: Record<ImpactType, { label: string, color: string }
 };
 
 export const DEFAULT_KPI_CONFIG: KpiConfigItem[] = [
-  { id: 'reach', label: 'リーチ(表示)', helper: 'どれくらいの人に届いたか' },
-  { id: 'responses', label: '反応数', helper: 'いいね・コメント・クリックの合計など' },
-  { id: 'sales', label: '売上/成約', helper: '購入や問い合わせなど、ゴールにつながる数' }
+  { id: 'reach', label: 'リーチ(表示)', helper: 'どれくらいの人に届いたか', role: 'denominator' },
+  { id: 'responses', label: '反応数', helper: 'いいね・コメント・クリックの合計など', role: 'numerator' },
+  { id: 'sales', label: '売上/成約', helper: '購入や問い合わせなど、ゴールにつながる数', role: 'none' }
 ];

@@ -1,15 +1,16 @@
 import React from 'react';
 import { Idea } from '../types';
 import { ZONES } from '../constants';
-import { Trash2 } from 'lucide-react';
+import { Trash2, FlaskConical } from 'lucide-react';
 
 interface IdeaListProps {
   items: Idea[];
   onDelete: (id: string) => void;
   highlightedId?: string | null;
+  onPromote?: (title: string) => void;
 }
 
-export const IdeaList: React.FC<IdeaListProps> = ({ items, onDelete, highlightedId }) => {
+export const IdeaList: React.FC<IdeaListProps> = ({ items, onDelete, highlightedId, onPromote }) => {
   if (items.length === 0) {
     return (
       <div className="text-center py-8 text-slate-400 text-sm">
@@ -59,18 +60,33 @@ export const IdeaList: React.FC<IdeaListProps> = ({ items, onDelete, highlighted
               </div>
             </div>
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if(window.confirm(`「${idea.title}」を削除しますか？`)) {
-                  onDelete(idea.id);
-                }
-              }}
-              className="text-slate-300 hover:text-rose-500 p-1 -mr-2 transition-colors"
-              aria-label="Delete"
-            >
-              <Trash2 size={16} />
-            </button>
+            <div className="flex flex-col gap-1 -mr-2">
+              {onPromote && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPromote(idea.title);
+                  }}
+                  className="text-slate-300 hover:text-indigo-500 p-1 transition-colors"
+                  aria-label="Create Hypothesis"
+                  title="このアイデアで仮説検証を行う"
+                >
+                  <FlaskConical size={16} />
+                </button>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if(window.confirm(`「${idea.title}」を削除しますか？`)) {
+                    onDelete(idea.id);
+                  }
+                }}
+                className="text-slate-300 hover:text-rose-500 p-1 transition-colors"
+                aria-label="Delete"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </div>
         );
       })}

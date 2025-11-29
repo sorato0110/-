@@ -44,9 +44,9 @@ export interface HypothesisItem {
   id: string;
   ideaTitle: string;
   hypothesis: string;
-  platform: string;
-  platformNote: string;
   duration: string;
+  startDate?: string;
+  endDate?: string;
   effort: EffortLevel;
   kpi: string;
   status: HypothesisStatus;
@@ -82,8 +82,11 @@ export interface ConfidenceData {
   updatedAt: number;
 }
 
+export type KpiRole = 'denominator' | 'numerator' | 'none';
+
 export interface KpiConfigItem {
   id: 'reach' | 'responses' | 'sales';
   label: string;
   helper: string;
+  role: KpiRole;
 }

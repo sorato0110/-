@@ -1,11 +1,15 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ExperimentLog, ConfidenceData, ImpactType, KpiConfigItem } from '../types';
+import { ExperimentLog, ConfidenceData, ImpactType, KpiConfigItem, KpiRole } from '../types';
 import { IMPACT_OPTIONS, DEFAULT_KPI_CONFIG } from '../constants';
 import { loadExperiments, saveExperiments, loadConfidenceData, saveConfidenceData, loadKpiConfig, saveKpiConfig } from '../services/storage';
 import { Plus, ChevronDown, ChevronUp, Trash2, TrendingUp, Info, Settings, X, Calendar } from 'lucide-react';
 
-export const ConfidenceBoard: React.FC = () => {
+interface ConfidenceBoardProps {
+  initialValues?: { ideaTitle: string; testTitle: string; startDate?: string; endDate?: string } | null;
+}
+
+export const ConfidenceBoard: React.FC<ConfidenceBoardProps> = ({ initialValues }) => {
   // --- State ---
   const [experiments, setExperiments] = useState<ExperimentLog[]>([]);
   const [confidenceData, setConfidenceData] = useState<ConfidenceData[]>([]);
@@ -48,6 +52,16 @@ export const ConfidenceBoard: React.FC = () => {
   useEffect(() => {
     saveConfidenceData(confidenceData);
   }, [confidenceData]);
+
+  // Handle incoming data from navigation
+  useEffect(() => {
+    if (initialValues) {
+      setIdeaTitle(initialValues.ideaTitle);
+      setTestTitle(initialValues.testTitle);
+      if (initialValues.startDate) setStartDate(initialValues.startDate);
+      if (initialValues.endDate) setEndDate(initialValues.endDate);
+    }
+  }, [initialValues]);
 
   // Sync Confidence Data with Experiments
   useEffect(() => {
@@ -142,7 +156,12 @@ export const ConfidenceBoard: React.FC = () => {
 
   // KPI Modal Handlers
   const openKpiModal = () => {
-    setEditingKpiConfig(JSON.parse(JSON.stringify(kpiConfig))); // Deep copy
+    // Fill in default role if missing (for legacy data)
+    const current = kpiConfig.map(item => ({
+       ...item,
+       role: item.role || 'none'
+    }));
+    setEditingKpiConfig(JSON.parse(JSON.stringify(current))); // Deep copy
     setIsKpiModalOpen(true);
   };
 
@@ -156,7 +175,8 @@ export const ConfidenceBoard: React.FC = () => {
     setIsKpiModalOpen(false);
   };
 
-  const handleKpiEditChange = (index: number, field: keyof KpiConfigItem, value: string) => {
+  // @ts-ignore
+  const handleKpiEditChange = (index: number, field: keyof KpiConfigItem, value: any) => {
     const newConfig = [...editingKpiConfig];
     // @ts-ignore
     newConfig[index][field] = value;
@@ -204,8 +224,8 @@ export const ConfidenceBoard: React.FC = () => {
       {/* KPI Edit Modal */}
       {isKpiModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
                 <Settings size={18} className="text-slate-500" />
                 指標ラベルのカスタマイズ
@@ -214,30 +234,51 @@ export const ConfidenceBoard: React.FC = () => {
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto">
               {editingKpiConfig.map((item, index) => (
-                <div key={item.id} className="space-y-2">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{item.id}</div>
-                  <div className="grid grid-cols-1 gap-2">
-                    <input
-                      type="text"
-                      value={item.label}
-                      onChange={(e) => handleKpiEditChange(index, 'label', e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 bg-white"
-                      placeholder="ラベル名"
-                    />
-                    <input
-                      type="text"
-                      value={item.helper}
-                      onChange={(e) => handleKpiEditChange(index, 'helper', e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm text-slate-500 bg-slate-50 focus:ring-2 focus:ring-indigo-500"
-                      placeholder="説明文"
-                    />
+                <div key={item.id} className="space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">{item.id}</div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">ラベル名</label>
+                      <input
+                        type="text"
+                        value={item.label}
+                        onChange={(e) => handleKpiEditChange(index, 'label', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 bg-white"
+                        placeholder="ラベル名"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">説明文</label>
+                      <input
+                        type="text"
+                        value={item.helper}
+                        onChange={(e) => handleKpiEditChange(index, 'helper', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm text-slate-500 bg-white focus:ring-2 focus:ring-indigo-500"
+                        placeholder="説明文"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">計算設定 (母数 or 成果)</label>
+                      <select
+                        value={item.role || 'none'}
+                        onChange={(e) => handleKpiEditChange(index, 'role', e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="none">計算に使わない</option>
+                        <option value="denominator">母数 (分母) として扱う</option>
+                        <option value="numerator">成果 (分子) として扱う</option>
+                      </select>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        ※「成果」を選ぶと、「母数」に設定された項目に対する割合(%)を自動計算して表示します。
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
               <button onClick={closeKpiModal} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
                 キャンセル
               </button>
@@ -310,7 +351,7 @@ export const ConfidenceBoard: React.FC = () => {
             <div className="md:col-span-3 relative bg-slate-50 p-3 rounded-lg border border-slate-100">
               <button 
                 onClick={openKpiModal}
-                className="absolute top-2 right-2 text-xs flex items-center gap-1 text-slate-400 hover:text-indigo-600 transition-colors bg-white px-2 py-1 rounded border border-slate-200 shadow-sm"
+                className="absolute top-2 right-2 text-xs flex items-center gap-1 text-slate-400 hover:text-indigo-600 transition-colors bg-white px-2 py-1 rounded border border-slate-200 shadow-sm z-10"
               >
                 <Settings size={12} />
                 指標を編集
@@ -321,7 +362,7 @@ export const ConfidenceBoard: React.FC = () => {
                   const { value, setValue } = getKpiInputProps(kpi.id);
                   return (
                     <div key={kpi.id}>
-                      <label className="block text-xs font-bold text-slate-600 mb-1 truncate" title={kpi.label}>
+                      <label className="block text-xs font-bold text-slate-600 mb-1 truncate pr-8" title={kpi.label}>
                         {kpi.label}
                       </label>
                       <input 
@@ -450,11 +491,24 @@ const ExperimentCard: React.FC<{
   onDelete: (id: string) => void
 }> = ({ experiment, kpiConfig, onUpdate, onDelete }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const responseRate = experiment.reach > 0 ? ((experiment.responses / experiment.reach) * 100).toFixed(1) : '-';
 
-  const reachLabel = kpiConfig.find(k => k.id === 'reach')?.label || 'リーチ';
-  const responsesLabel = kpiConfig.find(k => k.id === 'responses')?.label || '反応数';
-  const salesLabel = kpiConfig.find(k => k.id === 'sales')?.label || '売上';
+  // Helper to calculate rate if needed
+  const getRateDisplay = (kpi: KpiConfigItem) => {
+    if (kpi.role !== 'numerator') return null;
+    
+    // Find denominator
+    const denominatorKpi = kpiConfig.find(k => k.role === 'denominator');
+    if (!denominatorKpi) return null;
+
+    const numeratorVal = experiment[kpi.id as keyof ExperimentLog] as number;
+    const denominatorVal = experiment[denominatorKpi.id as keyof ExperimentLog] as number;
+
+    if (denominatorVal > 0) {
+      const rate = ((numeratorVal / denominatorVal) * 100).toFixed(1);
+      return <span className="text-xs text-slate-400 font-normal ml-1">({rate}%)</span>;
+    }
+    return <span className="text-xs text-slate-400 font-normal ml-1">(-%)</span>;
+  };
 
   return (
     <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
@@ -465,18 +519,24 @@ const ExperimentCard: React.FC<{
            <div className="font-bold text-slate-800 truncate">{experiment.ideaTitle}</div>
            <div className="text-sm text-slate-600 truncate">{experiment.testTitle}</div>
         </div>
-        <div className="col-span-4 md:col-span-2 text-center">
-           <div className="text-xs font-bold text-slate-400 truncate px-1" title={reachLabel}>{reachLabel}</div>
-           <div className="font-mono font-medium">{experiment.reach.toLocaleString()}</div>
-        </div>
-        <div className="col-span-4 md:col-span-2 text-center">
-           <div className="text-xs font-bold text-slate-400 truncate px-1" title={`${responsesLabel} (反応率)`}>{responsesLabel}</div>
-           <div className="font-mono font-medium">{experiment.responses.toLocaleString()} <span className="text-xs text-slate-400">({responseRate}%)</span></div>
-        </div>
-        <div className="col-span-4 md:col-span-2 text-center">
-           <div className="text-xs font-bold text-slate-400 truncate px-1" title={salesLabel}>{salesLabel}</div>
-           <div className="font-mono font-bold text-emerald-600">¥{experiment.sales.toLocaleString()}</div>
-        </div>
+        
+        {/* Dynamic KPI Columns */}
+        {kpiConfig.map((kpi) => {
+           const value = experiment[kpi.id as keyof ExperimentLog];
+           const formattedValue = typeof value === 'number' ? value.toLocaleString() : value;
+           const isSales = kpi.id === 'sales'; // Preserve special styling for sales if it still exists
+           
+           return (
+             <div key={kpi.id} className="col-span-4 md:col-span-2 text-center">
+               <div className="text-xs font-bold text-slate-400 truncate px-1" title={kpi.label}>{kpi.label}</div>
+               <div className={`font-mono ${isSales ? 'font-bold text-emerald-600' : 'font-medium'}`}>
+                 {isSales && '¥'}{formattedValue}
+                 {getRateDisplay(kpi)}
+               </div>
+             </div>
+           );
+        })}
+
         <div className="col-span-12 md:col-span-2 flex justify-end items-center gap-2">
            <button onClick={(e) => { e.stopPropagation(); onDelete(experiment.id); }} className="p-2 text-slate-300 hover:text-rose-500"><Trash2 size={16}/></button>
            {isOpen ? <ChevronUp size={20} className="text-slate-400"/> : <ChevronDown size={20} className="text-slate-400"/>}

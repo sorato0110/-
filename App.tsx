@@ -12,6 +12,10 @@ const App: React.FC = () => {
   // --- View State ---
   const [currentView, setCurrentView] = useState<'matrix' | 'hypothesis' | 'confidence'>('matrix');
 
+  // --- Data Transfer State ---
+  const [hypothesisInitialIdea, setHypothesisInitialIdea] = useState<string>('');
+  const [confidenceInitialData, setConfidenceInitialData] = useState<{ ideaTitle: string, testTitle: string, startDate?: string, endDate?: string } | null>(null);
+
   // --- Matrix State ---
   const [items, setItems] = useState<Idea[]>([]);
   const [filters, setFilters] = useState<FilterState>({
@@ -108,6 +112,28 @@ const App: React.FC = () => {
 
   const toggleFilter = (zone: ZoneType) => {
     setFilters(prev => ({ ...prev, [zone]: !prev[zone] }));
+  };
+
+  // --- Navigation & Data Transfer Handlers ---
+
+  const handleMoveToHypothesis = (ideaTitle: string) => {
+    setHypothesisInitialIdea(ideaTitle);
+    setCurrentView('hypothesis');
+    // Scroll to top to see the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleMoveToConfidence = (ideaTitle: string, hypothesis: string, startDate?: string, endDate?: string) => {
+    // Attempt to create a short test title from hypothesis or just use generic text
+    const shortTestTitle = hypothesis.length > 20 ? hypothesis.substring(0, 20) + '...' : hypothesis;
+    setConfidenceInitialData({
+      ideaTitle: ideaTitle,
+      testTitle: shortTestTitle,
+      startDate: startDate,
+      endDate: endDate
+    });
+    setCurrentView('confidence');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleExport = () => {
@@ -348,17 +374,23 @@ const App: React.FC = () => {
                 items={filteredItems} 
                 onDelete={handleDelete} 
                 highlightedId={highlightedId}
+                onPromote={handleMoveToHypothesis}
               />
             </section>
           </>
         )}
 
         {currentView === 'hypothesis' && (
-          <HypothesisBoard />
+          <HypothesisBoard 
+            initialIdea={hypothesisInitialIdea}
+            onPromoteToConfidence={handleMoveToConfidence}
+          />
         )}
 
         {currentView === 'confidence' && (
-          <ConfidenceBoard />
+          <ConfidenceBoard 
+            initialValues={confidenceInitialData}
+          />
         )}
       </main>
 

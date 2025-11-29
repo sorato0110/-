@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { HypothesisItem, EffortLevel, HypothesisStatus } from '../types';
-import { EFFORT_LABELS, STATUS_LABELS, PLATFORM_OPTIONS } from '../constants';
+import { EFFORT_LABELS, STATUS_LABELS } from '../constants';
 import { loadHypothesisItems, saveHypothesisItems } from '../services/storage';
-import { Trash2, Plus, Info, ChevronDown, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Trash2, Plus, Info, ChevronDown, CheckCircle2, Clock, AlertCircle, TrendingUp } from 'lucide-react';
 
-export const HypothesisBoard: React.FC = () => {
+interface HypothesisBoardProps {
+  initialIdea?: string;
+  onPromoteToConfidence?: (ideaTitle: string, hypothesis: string, startDate?: string, endDate?: string) => void;
+}
+
+export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, onPromoteToConfidence }) => {
   // --- State ---
   const [items, setItems] = useState<HypothesisItem[]>([]);
   
@@ -25,6 +30,12 @@ export const HypothesisBoard: React.FC = () => {
     saveHypothesisItems(items);
   }, [items]);
 
+  useEffect(() => {
+    if (initialIdea) {
+      setInputIdea(initialIdea);
+    }
+  }, [initialIdea]);
+
   // --- Handlers ---
 
   const handleAddItem = () => {
@@ -41,8 +52,6 @@ export const HypothesisBoard: React.FC = () => {
       id: generateId(),
       ideaTitle: inputIdea.trim(),
       hypothesis: inputHypothesis.trim(),
-      platform: 'X（旧Twitter）',
-      platformNote: '',
       duration: '',
       effort: 'normal',
       kpi: '',
@@ -198,7 +207,8 @@ export const HypothesisBoard: React.FC = () => {
                 key={item.id} 
                 item={item} 
                 onUpdate={handleUpdateItem} 
-                onDelete={handleDeleteItem} 
+                onDelete={handleDeleteItem}
+                onPromote={onPromoteToConfidence}
               />
             ))
           )}
@@ -214,10 +224,37 @@ interface HypothesisCardProps {
   item: HypothesisItem;
   onUpdate: (id: string, updates: Partial<HypothesisItem>) => void;
   onDelete: (id: string) => void;
+  onPromote?: (ideaTitle: string, hypothesis: string, startDate?: string, endDate?: string) => void;
 }
 
-const HypothesisCard: React.FC<HypothesisCardProps> = ({ item, onUpdate, onDelete }) => {
+const HypothesisCard: React.FC<HypothesisCardProps> = ({ item, onUpdate, onDelete, onPromote }) => {
   const isDone = item.status === 'done';
+
+  const handleDateChange = (type: 'start' | 'end', value: string) => {
+    const updates: Partial<HypothesisItem> = {};
+    if (type === 'start') updates.startDate = value;
+    else updates.endDate = value;
+
+    // Calculate duration string
+    const s = type === 'start' ? value : item.startDate;
+    const e = type === 'end' ? value : item.endDate;
+    
+    if (s && e) {
+      const start = new Date(s);
+      const end = new Date(e);
+      const diffTime = end.getTime() - start.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      const durationLabel = diffDays > 0 ? `(${diffDays}日間)` : '';
+      const format = (d: string) => d.replace(/-/g, '/');
+      updates.duration = `${format(s)}～${format(e)} ${durationLabel}`;
+    } else if (s) {
+       updates.duration = s.replace(/-/g, '/');
+    } else if (e) {
+       updates.duration = e.replace(/-/g, '/');
+    }
+    
+    onUpdate(item.id, updates);
+  };
 
   return (
     <div className={`
@@ -248,12 +285,23 @@ const HypothesisCard: React.FC<HypothesisCardProps> = ({ item, onUpdate, onDelet
            {isDone && <CheckCircle2 size={18} className="text-emerald-600" />}
            {item.status === 'running' && <Clock size={18} className="text-indigo-500 animate-pulse" />}
         </div>
-        <button
-          onClick={() => onDelete(item.id)}
-          className="text-slate-400 hover:text-rose-500 p-2 rounded-full hover:bg-rose-50 transition-colors"
-        >
-          <Trash2 size={18} />
-        </button>
+        <div className="flex items-center gap-1">
+          {onPromote && (
+            <button
+              onClick={() => onPromote(item.ideaTitle, item.hypothesis, item.startDate, item.endDate)}
+              className="text-slate-400 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-50 transition-colors"
+              title="この結果を分析・記録する"
+            >
+              <TrendingUp size={18} />
+            </button>
+          )}
+          <button
+            onClick={() => onDelete(item.id)}
+            className="text-slate-400 hover:text-rose-500 p-2 rounded-full hover:bg-rose-50 transition-colors"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
       </div>
 
       <div className="p-5 grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -274,39 +322,29 @@ const HypothesisCard: React.FC<HypothesisCardProps> = ({ item, onUpdate, onDelet
         <div className="md:col-span-8 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             
-            {/* Platform */}
+            {/* Duration (Date Range) */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500">プラットフォーム</label>
-              <div className="flex gap-2">
-                <select 
-                  value={item.platform}
-                  onChange={(e) => onUpdate(item.id, { platform: e.target.value })}
-                  className="w-full text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  {PLATFORM_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
+              <label className="text-xs font-bold text-slate-500">実施期間</label>
+              <div className="space-y-2">
+                <div className="relative">
+                  <span className="absolute -top-1.5 left-2 bg-white px-1 text-[10px] text-slate-400 font-bold z-10">開始</span>
+                  <input
+                    type="date"
+                    value={item.startDate || ''}
+                    onChange={(e) => handleDateChange('start', e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm text-slate-600"
+                  />
+                </div>
+                <div className="relative">
+                  <span className="absolute -top-1.5 left-2 bg-white px-1 text-[10px] text-slate-400 font-bold z-10">終了</span>
+                  <input
+                    type="date"
+                    value={item.endDate || ''}
+                    onChange={(e) => handleDateChange('end', e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm text-slate-600"
+                  />
+                </div>
               </div>
-              {item.platform === 'その他' && (
-                <input 
-                  type="text" 
-                  value={item.platformNote}
-                  onChange={(e) => onUpdate(item.id, { platformNote: e.target.value })}
-                  placeholder="詳細を入力"
-                  className="w-full text-sm border-slate-300 rounded-md mt-1"
-                />
-              )}
-            </div>
-
-            {/* Duration */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500">テスト期間</label>
-              <input
-                type="text"
-                value={item.duration}
-                onChange={(e) => onUpdate(item.id, { duration: e.target.value })}
-                placeholder="例: 1週間"
-                className="w-full text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-              />
             </div>
 
             {/* Effort */}
@@ -325,7 +363,7 @@ const HypothesisCard: React.FC<HypothesisCardProps> = ({ item, onUpdate, onDelet
             </div>
 
             {/* KPI */}
-            <div className="space-y-1">
+            <div className="space-y-1 col-span-1 sm:col-span-2">
               <label className="text-xs font-bold text-slate-500">成功指標 (KPI)</label>
               <input
                 type="text"
