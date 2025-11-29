@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ExperimentLog, ConfidenceData, ImpactType, KpiConfigItem, KpiRole } from '../types';
 import { IMPACT_OPTIONS, DEFAULT_KPI_CONFIG } from '../constants';
@@ -6,7 +5,14 @@ import { loadExperiments, saveExperiments, loadConfidenceData, saveConfidenceDat
 import { Plus, ChevronDown, ChevronUp, Trash2, TrendingUp, Info, Settings, X, Calendar } from 'lucide-react';
 
 interface ConfidenceBoardProps {
-  initialValues?: { ideaTitle: string; testTitle: string; startDate?: string; endDate?: string } | null;
+  initialValues?: { 
+    ideaTitle: string; 
+    testTitle: string; 
+    startDate?: string; 
+    endDate?: string;
+    initialMetrics?: { reach: number; responses: number; sales: number };
+    initialMemo?: string;
+  } | null;
 }
 
 export const ConfidenceBoard: React.FC<ConfidenceBoardProps> = ({ initialValues }) => {
@@ -60,6 +66,16 @@ export const ConfidenceBoard: React.FC<ConfidenceBoardProps> = ({ initialValues 
       setTestTitle(initialValues.testTitle);
       if (initialValues.startDate) setStartDate(initialValues.startDate);
       if (initialValues.endDate) setEndDate(initialValues.endDate);
+      
+      if (initialValues.initialMetrics) {
+        if(initialValues.initialMetrics.reach) setReach(initialValues.initialMetrics.reach.toString());
+        if(initialValues.initialMetrics.responses) setResponses(initialValues.initialMetrics.responses.toString());
+        if(initialValues.initialMetrics.sales) setSales(initialValues.initialMetrics.sales.toString());
+      }
+      
+      if (initialValues.initialMemo) {
+        setMemo(initialValues.initialMemo);
+      }
     }
   }, [initialValues]);
 

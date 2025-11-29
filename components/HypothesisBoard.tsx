@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { HypothesisItem, EffortLevel, HypothesisStatus, KpiConfigItem, DailyLog } from '../types';
-import { EFFORT_LABELS, STATUS_LABELS } from '../constants';
+import { STATUS_LABELS } from '../constants';
 import { loadHypothesisItems, saveHypothesisItems, loadKpiConfig } from '../services/storage';
 import { Trash2, Plus, Info, ChevronDown, CheckCircle2, Clock, AlertCircle, TrendingUp, MessageSquarePlus } from 'lucide-react';
 import { QuickLogPanel } from './QuickLogPanel';
 
 interface HypothesisBoardProps {
   initialIdea?: string;
-  onPromoteToConfidence?: (ideaTitle: string, hypothesis: string, startDate?: string, endDate?: string) => void;
+  onPromoteToConfidence?: (
+    ideaTitle: string, 
+    hypothesis: string, 
+    startDate?: string, 
+    endDate?: string,
+    initialMetrics?: { reach: number; responses: number; sales: number },
+    initialMemo?: string
+  ) => void;
 }
 
 export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, onPromoteToConfidence }) => {
@@ -20,7 +27,7 @@ export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, o
   const [inputHypothesis, setInputHypothesis] = useState('');
   
   // Filters
-  const [sortOrder, setSortOrder] = useState<'effort' | 'newest'>('newest');
+  const [sortOrder, setSortOrder] = useState<'newest'>('newest');
   const [statusFilter, setStatusFilter] = useState<'all' | HypothesisStatus>('all');
 
   // Quick Log Panel State
@@ -105,7 +112,6 @@ export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, o
   };
 
   // --- Helpers ---
-  const effortOrder: EffortLevel[] = ['tiny', 'small', 'normal', 'heavy'];
 
   const filteredItems = useMemo(() => {
     let result = [...items];
@@ -116,12 +122,8 @@ export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, o
     }
 
     // Sort
-    if (sortOrder === 'effort') {
-      result.sort((a, b) => effortOrder.indexOf(a.effort) - effortOrder.indexOf(b.effort));
-    } else {
-      // Newest
-      result.sort((a, b) => b.createdAt - a.createdAt);
-    }
+    // Newest
+    result.sort((a, b) => b.createdAt - a.createdAt);
 
     return result;
   }, [items, sortOrder, statusFilter]);
@@ -131,9 +133,9 @@ export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, o
   return (
     <div className="space-y-8 pb-20 relative">
       
-      {/* Quick Log FAB (Only visible if there are running items) */}
-      {runningItems.length > 0 && !isLogPanelOpen && (
-        <div className="fixed bottom-6 right-6 z-40 animate-in zoom-in duration-300">
+      {/* Quick Log FAB (Always visible when panel is closed) */}
+      {!isLogPanelOpen && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in zoom-in duration-300">
            <button
              onClick={() => setIsLogPanelOpen(true)}
              className="bg-slate-800 text-white p-4 rounded-full shadow-xl hover:bg-slate-900 transition-all hover:scale-105 active:scale-95 flex items-center justify-center relative group"
@@ -221,7 +223,6 @@ export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, o
               className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700"
             >
               <option value="newest">追加順</option>
-              <option value="effort">作業量が小さい順</option>
             </select>
             <select
               value={statusFilter}
@@ -270,7 +271,14 @@ interface HypothesisCardProps {
   item: HypothesisItem;
   onUpdate: (id: string, updates: Partial<HypothesisItem>) => void;
   onDelete: (id: string) => void;
-  onPromote?: (ideaTitle: string, hypothesis: string, startDate?: string, endDate?: string) => void;
+  onPromote?: (
+    ideaTitle: string, 
+    hypothesis: string, 
+    startDate?: string, 
+    endDate?: string,
+    initialMetrics?: { reach: number; responses: number; sales: number },
+    initialMemo?: string
+  ) => void;
 }
 
 const HypothesisCard: React.FC<HypothesisCardProps> = ({ item, onUpdate, onDelete, onPromote }) => {
@@ -300,6 +308,43 @@ const HypothesisCard: React.FC<HypothesisCardProps> = ({ item, onUpdate, onDelet
     }
     
     onUpdate(item.id, updates);
+  };
+
+  const handlePromoteClick = () => {
+    if (!onPromote) return;
+
+    // Aggregate logs
+    const aggregatedMetrics = { reach: 0, responses: 0, sales: 0 };
+    let aggregatedMemo = '';
+    
+    // Sort logs by date for memo
+    const sortedLogs = [...(item.dailyLogs || [])].sort((a, b) => a.date.localeCompare(b.date));
+
+    sortedLogs.forEach(log => {
+      // Sum standard metrics if they exist
+      if (log.metrics['reach']) aggregatedMetrics.reach += log.metrics['reach'];
+      if (log.metrics['responses']) aggregatedMetrics.responses += log.metrics['responses'];
+      if (log.metrics['sales']) aggregatedMetrics.sales += log.metrics['sales'];
+      
+      // Concatenate memos
+      if (log.memo && log.memo.trim()) {
+        aggregatedMemo += `[${log.date}] ${log.memo}\n`;
+      }
+    });
+
+    // If there is existing learning, append it
+    if (item.learning) {
+      aggregatedMemo += `\n[学びメモ] ${item.learning}`;
+    }
+
+    onPromote(
+      item.ideaTitle,
+      item.hypothesis,
+      item.startDate,
+      item.endDate,
+      aggregatedMetrics,
+      aggregatedMemo.trim()
+    );
   };
 
   return (
@@ -342,7 +387,7 @@ const HypothesisCard: React.FC<HypothesisCardProps> = ({ item, onUpdate, onDelet
         <div className="flex items-center gap-1">
           {onPromote && (
             <button
-              onClick={() => onPromote(item.ideaTitle, item.hypothesis, item.startDate, item.endDate)}
+              onClick={handlePromoteClick}
               className="text-slate-400 hover:text-indigo-600 p-2 rounded-full hover:bg-indigo-50 transition-colors"
               title="この結果を分析・記録する"
             >
@@ -401,30 +446,15 @@ const HypothesisCard: React.FC<HypothesisCardProps> = ({ item, onUpdate, onDelet
               </div>
             </div>
 
-            {/* Effort */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500">作業量</label>
-              <select
-                value={item.effort}
-                onChange={(e) => onUpdate(item.id, { effort: e.target.value as EffortLevel })}
-                className={`w-full text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 font-medium ${EFFORT_LABELS[item.effort].color.split(' ')[1]}`}
-              >
-                <option value="tiny">とても小さい</option>
-                <option value="small">小さい</option>
-                <option value="normal">ふつう</option>
-                <option value="heavy">重め</option>
-              </select>
-            </div>
-
             {/* KPI */}
-            <div className="space-y-1 col-span-1 sm:col-span-2">
+            <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500">成功指標 (KPI)</label>
               <input
                 type="text"
                 value={item.kpi}
                 onChange={(e) => onUpdate(item.id, { kpi: e.target.value })}
                 placeholder="例: フォロワー+100"
-                className="w-full text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm text-slate-700 placeholder:text-slate-400"
               />
             </div>
           </div>

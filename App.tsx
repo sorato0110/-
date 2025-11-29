@@ -14,7 +14,14 @@ const App: React.FC = () => {
 
   // --- Data Transfer State ---
   const [hypothesisInitialIdea, setHypothesisInitialIdea] = useState<string>('');
-  const [confidenceInitialData, setConfidenceInitialData] = useState<{ ideaTitle: string, testTitle: string, startDate?: string, endDate?: string } | null>(null);
+  const [confidenceInitialData, setConfidenceInitialData] = useState<{ 
+    ideaTitle: string, 
+    testTitle: string, 
+    startDate?: string, 
+    endDate?: string,
+    initialMetrics?: { reach: number; responses: number; sales: number },
+    initialMemo?: string
+  } | null>(null);
 
   // --- Matrix State ---
   const [items, setItems] = useState<Idea[]>([]);
@@ -123,14 +130,23 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleMoveToConfidence = (ideaTitle: string, hypothesis: string, startDate?: string, endDate?: string) => {
+  const handleMoveToConfidence = (
+    ideaTitle: string, 
+    hypothesis: string, 
+    startDate?: string, 
+    endDate?: string,
+    metrics?: { reach: number; responses: number; sales: number },
+    memo?: string
+  ) => {
     // Attempt to create a short test title from hypothesis or just use generic text
     const shortTestTitle = hypothesis.length > 20 ? hypothesis.substring(0, 20) + '...' : hypothesis;
     setConfidenceInitialData({
       ideaTitle: ideaTitle,
       testTitle: shortTestTitle,
       startDate: startDate,
-      endDate: endDate
+      endDate: endDate,
+      initialMetrics: metrics,
+      initialMemo: memo
     });
     setCurrentView('confidence');
     window.scrollTo({ top: 0, behavior: 'smooth' });
