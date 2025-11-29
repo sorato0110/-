@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ExperimentLog, ConfidenceData, ImpactType, KpiConfigItem } from '../types';
 import { IMPACT_OPTIONS, DEFAULT_KPI_CONFIG } from '../constants';
 import { loadExperiments, saveExperiments, loadConfidenceData, saveConfidenceData, loadKpiConfig, saveKpiConfig } from '../services/storage';
-import { Plus, ChevronDown, ChevronUp, Trash2, TrendingUp, Info, Settings, X } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Trash2, TrendingUp, Info, Settings, X, Calendar } from 'lucide-react';
 
 export const ConfidenceBoard: React.FC = () => {
   // --- State ---
@@ -14,7 +14,10 @@ export const ConfidenceBoard: React.FC = () => {
   // Form State
   const [ideaTitle, setIdeaTitle] = useState('');
   const [testTitle, setTestTitle] = useState('');
-  const [period, setPeriod] = useState('');
+  
+  // Date Inputs for Period
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   // KPI Inputs
   const [reach, setReach] = useState('');
@@ -77,11 +80,27 @@ export const ConfidenceBoard: React.FC = () => {
 
     const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
 
+    // Calculate period string from dates
+    let periodStr = '';
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffTime = end.getTime() - start.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // inclusive
+      const durationLabel = diffDays > 0 ? `(${diffDays}日間)` : '';
+      const format = (d: string) => d.replace(/-/g, '/');
+      periodStr = `${format(startDate)}～${format(endDate)} ${durationLabel}`;
+    } else if (startDate) {
+        periodStr = startDate.replace(/-/g, '/');
+    } else if (endDate) {
+        periodStr = endDate.replace(/-/g, '/');
+    }
+
     const newExp: ExperimentLog = {
       id: generateId(),
       ideaTitle: ideaTitle.trim(),
       testTitle: testTitle.trim(),
-      period: period.trim(),
+      period: periodStr,
       reach: Number(reach) || 0,
       responses: Number(responses) || 0,
       sales: Number(sales) || 0,
@@ -97,7 +116,8 @@ export const ConfidenceBoard: React.FC = () => {
     // Clear Form
     setIdeaTitle('');
     setTestTitle('');
-    setPeriod('');
+    setStartDate('');
+    setEndDate('');
     setReach('');
     setResponses('');
     setSales('');
@@ -265,13 +285,26 @@ export const ConfidenceBoard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="md:col-span-1">
               <label className="block text-xs font-bold text-slate-500 mb-1">実施期間</label>
-              <input
-                type="text"
-                value={period}
-                onChange={e => setPeriod(e.target.value)}
-                placeholder="例：3日間"
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-              />
+              <div className="space-y-2">
+                <div className="relative">
+                  <span className="absolute -top-1.5 left-2 bg-white px-1 text-[10px] text-slate-400 font-bold z-10">開始</span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm text-slate-600"
+                  />
+                </div>
+                <div className="relative">
+                  <span className="absolute -top-1.5 left-2 bg-white px-1 text-[10px] text-slate-400 font-bold z-10">終了</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm text-slate-600"
+                  />
+                </div>
+              </div>
             </div>
             
             <div className="md:col-span-3 relative bg-slate-50 p-3 rounded-lg border border-slate-100">

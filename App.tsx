@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Idea, ZoneType, ScaleValue, FilterState } from './types';
 import { ZONES } from './constants';
@@ -216,25 +215,9 @@ const App: React.FC = () => {
 
           {/* Conditional Header Controls based on View */}
           {currentView === 'matrix' && (
-            <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
-               {/* Filter Bar */}
-              <div className="flex flex-wrap gap-2">
-                {Object.values(ZONES).map((zone) => (
-                  <button
-                    key={zone.id}
-                    onClick={() => toggleFilter(zone.id)}
-                    className={`
-                      px-3 py-1.5 rounded-full text-xs font-semibold transition-all border
-                      ${filters[zone.id] ? zone.activeClass : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}
-                    `}
-                  >
-                    {zone.label}
-                  </button>
-                ))}
-              </div>
-
+            <div className="flex justify-end items-center pt-2">
               {/* Data Controls */}
-              <div className="flex gap-2 self-end sm:self-auto">
+              <div className="flex gap-2">
                 <button onClick={handleExport} title="Export JSON" className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors">
                   <Download size={18} />
                 </button>
@@ -326,7 +309,7 @@ const App: React.FC = () => {
 
             {/* 3. Matrix Visualization */}
             <section>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-4">
                 <input
                   type="text"
                   value={projectTitle}
@@ -335,6 +318,23 @@ const App: React.FC = () => {
                   className="w-full font-bold text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:ring-0 focus:outline-none transition-all p-0 text-lg placeholder:text-slate-300"
                 />
               </div>
+
+              {/* Filter Bar - Moved here for better visibility */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {Object.values(ZONES).map((zone) => (
+                  <button
+                    key={zone.id}
+                    onClick={() => toggleFilter(zone.id)}
+                    className={`
+                      px-3 py-1.5 rounded-full text-xs font-semibold transition-all border
+                      ${filters[zone.id] ? zone.activeClass : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}
+                    `}
+                  >
+                    {zone.label}
+                  </button>
+                ))}
+              </div>
+
               <IdeaMatrix items={filteredItems} onItemClick={handleChartItemClick} />
             </section>
 
