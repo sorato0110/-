@@ -40,6 +40,14 @@ export interface FilterState {
 export type EffortLevel = 'tiny' | 'small' | 'normal' | 'heavy';
 export type HypothesisStatus = 'not-started' | 'running' | 'done';
 
+export interface DailyLog {
+  id: string;
+  date: string;
+  metrics: Record<string, number>; // e.g. { reach: 100, responses: 5 }
+  memo: string;
+  createdAt: number;
+}
+
 export interface HypothesisItem {
   id: string;
   ideaTitle: string;
@@ -51,6 +59,7 @@ export interface HypothesisItem {
   kpi: string;
   status: HypothesisStatus;
   learning: string;
+  dailyLogs?: DailyLog[]; // New: Store daily progress
   createdAt: number;
 }
 

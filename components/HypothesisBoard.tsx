@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { HypothesisItem, EffortLevel, HypothesisStatus } from '../types';
+import { HypothesisItem, EffortLevel, HypothesisStatus, KpiConfigItem, DailyLog } from '../types';
 import { EFFORT_LABELS, STATUS_LABELS } from '../constants';
-import { loadHypothesisItems, saveHypothesisItems } from '../services/storage';
-import { Trash2, Plus, Info, ChevronDown, CheckCircle2, Clock, AlertCircle, TrendingUp } from 'lucide-react';
+import { loadHypothesisItems, saveHypothesisItems, loadKpiConfig } from '../services/storage';
+import { Trash2, Plus, Info, ChevronDown, CheckCircle2, Clock, AlertCircle, TrendingUp, MessageSquarePlus } from 'lucide-react';
+import { QuickLogPanel } from './QuickLogPanel';
 
 interface HypothesisBoardProps {
   initialIdea?: string;
@@ -12,6 +13,7 @@ interface HypothesisBoardProps {
 export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, onPromoteToConfidence }) => {
   // --- State ---
   const [items, setItems] = useState<HypothesisItem[]>([]);
+  const [kpiConfig, setKpiConfig] = useState<KpiConfigItem[]>([]);
   
   // Input Form State
   const [inputIdea, setInputIdea] = useState('');
@@ -21,9 +23,13 @@ export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, o
   const [sortOrder, setSortOrder] = useState<'effort' | 'newest'>('newest');
   const [statusFilter, setStatusFilter] = useState<'all' | HypothesisStatus>('all');
 
+  // Quick Log Panel State
+  const [isLogPanelOpen, setIsLogPanelOpen] = useState(false);
+
   // --- Effects ---
   useEffect(() => {
     setItems(loadHypothesisItems());
+    setKpiConfig(loadKpiConfig());
   }, []);
 
   useEffect(() => {
@@ -58,6 +64,7 @@ export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, o
       status: 'not-started',
       learning: '',
       createdAt: Date.now(),
+      dailyLogs: [],
     };
 
     setItems(prev => [newItem, ...prev]);
@@ -84,6 +91,19 @@ export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, o
     }
   };
 
+  // Quick Log Handler
+  const handleAddLog = (itemId: string, log: DailyLog) => {
+    setItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          dailyLogs: [...(item.dailyLogs || []), log]
+        };
+      }
+      return item;
+    }));
+  };
+
   // --- Helpers ---
   const effortOrder: EffortLevel[] = ['tiny', 'small', 'normal', 'heavy'];
 
@@ -106,8 +126,34 @@ export const HypothesisBoard: React.FC<HypothesisBoardProps> = ({ initialIdea, o
     return result;
   }, [items, sortOrder, statusFilter]);
 
+  const runningItems = useMemo(() => items.filter(i => i.status === 'running'), [items]);
+
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-8 pb-20 relative">
+      
+      {/* Quick Log FAB (Only visible if there are running items) */}
+      {runningItems.length > 0 && !isLogPanelOpen && (
+        <div className="fixed bottom-6 right-6 z-40 animate-in zoom-in duration-300">
+           <button
+             onClick={() => setIsLogPanelOpen(true)}
+             className="bg-slate-800 text-white p-4 rounded-full shadow-xl hover:bg-slate-900 transition-all hover:scale-105 active:scale-95 flex items-center justify-center relative group"
+           >
+             <MessageSquarePlus size={24} />
+             <span className="absolute right-full mr-3 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+               進捗ログを書く
+             </span>
+           </button>
+        </div>
+      )}
+
+      {/* Quick Log Panel */}
+      <QuickLogPanel 
+        isOpen={isLogPanelOpen}
+        onClose={() => setIsLogPanelOpen(false)}
+        runningItems={runningItems}
+        kpiConfig={kpiConfig}
+        onAddLog={handleAddLog}
+      />
       
       {/* --- Step 1: Create Hypothesis --- */}
       <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
@@ -258,9 +304,17 @@ const HypothesisCard: React.FC<HypothesisCardProps> = ({ item, onUpdate, onDelet
 
   return (
     <div className={`
-      bg-white rounded-xl shadow-sm border transition-all duration-300 overflow-hidden
+      bg-white rounded-xl shadow-sm border transition-all duration-300 overflow-hidden relative
       ${isDone ? 'border-slate-300 bg-slate-50' : 'border-slate-200 hover:shadow-md'}
     `}>
+      {/* Log Count Badge */}
+      {item.dailyLogs && item.dailyLogs.length > 0 && (
+         <div className="absolute top-0 right-0 bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg z-20 shadow-sm flex items-center gap-1">
+           <MessageSquarePlus size={10} />
+           {item.dailyLogs.length} logs
+         </div>
+      )}
+
       {/* Header: Status & Actions */}
       <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
         <div className="flex items-center gap-3">
