@@ -38,7 +38,8 @@ export interface FilterState {
 // --- Hypothesis Board Types ---
 
 export type EffortLevel = 'tiny' | 'small' | 'normal' | 'heavy';
-export type HypothesisStatus = 'not-started' | 'running' | 'done';
+// MAB Statuses: not-started -> trial (start small) -> focus (scale up) / sustain (keep small) / drop (stop) -> completed
+export type HypothesisStatus = 'not-started' | 'trial' | 'focus' | 'sustain' | 'drop' | 'completed' | 'running' | 'done';
 
 export interface DailyLog {
   id: string;
@@ -56,6 +57,7 @@ export interface HypothesisItem {
   startDate?: string;
   endDate?: string;
   effort: EffortLevel;
+  resourceAllocation?: number; // 0-100%
   kpi: string;
   status: HypothesisStatus;
   learning: string;

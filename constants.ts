@@ -52,9 +52,15 @@ export const EFFORT_LABELS: Record<EffortLevel, { label: string, color: string }
   heavy: { label: '重め', color: 'bg-red-100 text-red-800' },
 };
 
-export const STATUS_LABELS: Record<HypothesisStatus, { label: string, color: string }> = {
-  'not-started': { label: '未着手', color: 'bg-slate-100 text-slate-600' },
-  'running': { label: '実行中', color: 'bg-indigo-100 text-indigo-700 animate-pulse' },
+export const STATUS_LABELS: Record<HypothesisStatus, { label: string, color: string, description?: string }> = {
+  'not-started': { label: '未着手', color: 'bg-slate-100 text-slate-600 border-slate-200', description: 'まだ開始していません' },
+  'trial': { label: '🌱 Trial (試行)', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', description: '少額・短期間でテスト' },
+  'focus': { label: '🔥 Focus (注力)', color: 'bg-indigo-50 text-indigo-700 border-indigo-200', description: 'リソースを集中投下' },
+  'sustain': { label: '🧊 Sustain (維持)', color: 'bg-sky-50 text-sky-700 border-sky-200', description: '最小限のリソースで継続' },
+  'drop': { label: '🗑️ Drop (撤退)', color: 'bg-rose-50 text-rose-700 border-rose-200', description: '投資ストップ' },
+  'completed': { label: '完了', color: 'bg-slate-200 text-slate-700 border-slate-300', description: '検証終了' },
+  // Legacy mappings
+  'running': { label: '実行中', color: 'bg-indigo-100 text-indigo-700' },
   'done': { label: '完了', color: 'bg-emerald-100 text-emerald-800' },
 };
 
