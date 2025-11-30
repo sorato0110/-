@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { ExperimentLog, ConfidenceData, ImpactType, KpiConfigItem, KpiRole } from '../types';
 import { IMPACT_OPTIONS, DEFAULT_KPI_CONFIG } from '../constants';
@@ -191,12 +192,12 @@ export const ConfidenceBoard: React.FC<ConfidenceBoardProps> = ({ initialValues 
     setIsKpiModalOpen(false);
   };
 
-  // @ts-ignore
   const handleKpiEditChange = (index: number, field: keyof KpiConfigItem, value: any) => {
-    const newConfig = [...editingKpiConfig];
-    // @ts-ignore
-    newConfig[index][field] = value;
-    setEditingKpiConfig(newConfig);
+    setEditingKpiConfig(prev => {
+      const newConfig = [...prev];
+      newConfig[index] = { ...newConfig[index], [field]: value };
+      return newConfig;
+    });
   };
 
   // --- Helper Helpers ---

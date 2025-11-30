@@ -1,6 +1,6 @@
 
 import { Idea, FilterState, ZoneType, ScaleValue, HypothesisItem, ExperimentLog, ConfidenceData, KpiConfigItem } from '../types';
-import { STORAGE_KEY_ITEMS, STORAGE_KEY_FILTERS, STORAGE_KEY_TITLE, STORAGE_KEY_HYPOTHESIS, STORAGE_KEY_EXPERIMENTS, STORAGE_KEY_CONFIDENCE, STORAGE_KEY_KPI_CONFIG, DEFAULT_KPI_CONFIG } from '../constants';
+import { STORAGE_KEY_ITEMS, STORAGE_KEY_FILTERS, STORAGE_KEY_TITLE, STORAGE_KEY_HYPOTHESIS, STORAGE_KEY_EXPERIMENTS, STORAGE_KEY_CONFIDENCE, STORAGE_KEY_KPI_CONFIG, DEFAULT_KPI_CONFIG, ZONES } from '../constants';
 
 /**
  * Calculates the score and determines the zone based on Impact and Cost.
@@ -33,7 +33,26 @@ export const loadItems = (): Idea[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ITEMS);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    
+    if (!Array.isArray(parsed)) return [];
+
+    // Validate and migrate data
+    return parsed.map((item: any) => {
+      // Ensure zone exists and is valid
+      if (!item.zone || !ZONES[item.zone as ZoneType]) {
+        const { zone, score } = calculateMetrics(item.impact || 3, item.cost || 3);
+        return { 
+          ...item, 
+          zone, 
+          score: item.score || score,
+          impact: item.impact || 3,
+          cost: item.cost || 3,
+          createdAt: item.createdAt || Date.now()
+        };
+      }
+      return item;
+    });
   } catch (e) {
     console.error('Failed to load items', e);
     return [];

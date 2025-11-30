@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { HypothesisItem, KpiConfigItem, DailyLog } from '../types';
 import { X, Send, MessageSquarePlus, ChevronLeft, Calendar } from 'lucide-react';
