@@ -1,4 +1,3 @@
-
 import { Idea, FilterState, ZoneType, ScaleValue, HypothesisItem, ExperimentLog, ConfidenceData, KpiConfigItem } from '../types';
 import { STORAGE_KEY_ITEMS, STORAGE_KEY_FILTERS, STORAGE_KEY_TITLE, STORAGE_KEY_HYPOTHESIS, STORAGE_KEY_EXPERIMENTS, STORAGE_KEY_CONFIDENCE, STORAGE_KEY_KPI_CONFIG, DEFAULT_KPI_CONFIG, ZONES } from '../constants';
 
@@ -79,7 +78,17 @@ export const loadFilters = (): FilterState => {
          [ZoneType.IGNORE]: true,
        };
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    
+    if (!parsed || typeof parsed !== 'object') throw new Error("Invalid filters");
+
+    // Ensure all keys exist
+    return {
+      [ZoneType.QUICK_WINS]: parsed[ZoneType.QUICK_WINS] ?? true,
+      [ZoneType.MAJOR_PROJECTS]: parsed[ZoneType.MAJOR_PROJECTS] ?? true,
+      [ZoneType.FILL_INS]: parsed[ZoneType.FILL_INS] ?? true,
+      [ZoneType.IGNORE]: parsed[ZoneType.IGNORE] ?? true,
+    };
   } catch (e) {
     return {
       [ZoneType.QUICK_WINS]: true,
@@ -113,8 +122,20 @@ export const loadHypothesisItems = (): HypothesisItem[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_HYPOTHESIS);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as HypothesisStorageFormat;
-    return parsed.items || [];
+    
+    // Attempt to parse
+    const parsed = JSON.parse(raw);
+
+    // Check if it's the new format with version
+    if (parsed && typeof parsed === 'object' && 'items' in parsed && Array.isArray(parsed.items)) {
+      return parsed.items;
+    } 
+    // Legacy check: if it's just an array
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    
+    return [];
   } catch (e) {
     console.error('Failed to load hypothesis items', e);
     return [];

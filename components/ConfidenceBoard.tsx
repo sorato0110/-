@@ -194,6 +194,7 @@ export const ConfidenceBoard: React.FC<ConfidenceBoardProps> = ({ initialValues 
 
   const handleKpiEditChange = (index: number, field: keyof KpiConfigItem, value: any) => {
     setEditingKpiConfig(prev => {
+      // Create a shallow copy of the array AND the item being modified
       const newConfig = [...prev];
       newConfig[index] = { ...newConfig[index], [field]: value };
       return newConfig;
