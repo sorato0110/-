@@ -256,4 +256,4 @@ export const QuickLogPanel: React.FC<QuickLogPanelProps> = ({
       </div>
     </div>
   );
-}
+};
