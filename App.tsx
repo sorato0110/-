@@ -6,23 +6,12 @@ import { IdeaMatrix } from './components/IdeaMatrix';
 import { IdeaList } from './components/IdeaList';
 import { HypothesisBoard } from './components/HypothesisBoard';
 import { ConfidenceBoard } from './components/ConfidenceBoard';
-import { Download, Upload, Trash2, Plus, RefreshCw, LayoutGrid, FlaskConical, TrendingUp } from 'lucide-react';
+import { Download, Upload, RefreshCw, Plus, LayoutGrid, FlaskConical, TrendingUp } from 'lucide-react';
 
 const App: React.FC = () => {
-  // --- View State ---
-  const [currentView, setCurrentView] = useState<'matrix' | 'hypothesis' | 'confidence'>('matrix');
-
-  // --- Data Transfer State ---
-  const [hypothesisInitialIdea, setHypothesisInitialIdea] = useState<string>('');
-  const [confidenceInitialData, setConfidenceInitialData] = useState<{ 
-    ideaTitle: string, 
-    testTitle: string, 
-    startDate?: string, 
-    endDate?: string,
-    initialMetrics?: { reach: number; responses: number; sales: number },
-    initialMemo?: string
-  } | null>(null);
-
+  // --- Navigation State ---
+  const [activeTab, setActiveTab] = useState<'matrix' | 'hypothesis' | 'confidence'>('matrix');
+  
   // --- Matrix State ---
   const [items, setItems] = useState<Idea[]>([]);
   const [filters, setFilters] = useState<FilterState>({
@@ -39,6 +28,19 @@ const App: React.FC = () => {
   const [memo, setMemo] = useState('');
   const [impact, setImpact] = useState<ScaleValue>(3);
   const [cost, setCost] = useState<ScaleValue>(3);
+
+  // Cross-Tab State
+  const [promoteIdeaTitle, setPromoteIdeaTitle] = useState<string>('');
+  
+  // Data transfer to Confidence Board
+  const [promoteToConfidenceData, setPromoteToConfidenceData] = useState<{
+    ideaTitle: string;
+    testTitle: string;
+    startDate?: string;
+    endDate?: string;
+    initialMetrics?: { reach: number; responses: number; sales: number };
+    initialMemo?: string;
+  } | null>(null);
 
   // --- Effects ---
 
@@ -121,37 +123,6 @@ const App: React.FC = () => {
     setFilters(prev => ({ ...prev, [zone]: !prev[zone] }));
   };
 
-  // --- Navigation & Data Transfer Handlers ---
-
-  const handleMoveToHypothesis = (ideaTitle: string) => {
-    setHypothesisInitialIdea(ideaTitle);
-    setCurrentView('hypothesis');
-    // Scroll to top to see the form
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleMoveToConfidence = (
-    ideaTitle: string, 
-    hypothesis: string, 
-    startDate?: string, 
-    endDate?: string,
-    metrics?: { reach: number; responses: number; sales: number },
-    memo?: string
-  ) => {
-    // Attempt to create a short test title from hypothesis or just use generic text
-    const shortTestTitle = hypothesis.length > 20 ? hypothesis.substring(0, 20) + '...' : hypothesis;
-    setConfidenceInitialData({
-      ideaTitle: ideaTitle,
-      testTitle: shortTestTitle,
-      startDate: startDate,
-      endDate: endDate,
-      initialMetrics: metrics,
-      initialMemo: memo
-    });
-    setCurrentView('confidence');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const handleExport = () => {
     const exportData = {
       items,
@@ -205,6 +176,34 @@ const App: React.FC = () => {
     }
   };
 
+  // Switch to Hypothesis tab and pre-fill idea
+  const handlePromoteToHypothesis = (ideaTitle: string) => {
+    setPromoteIdeaTitle(ideaTitle);
+    setActiveTab('hypothesis');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Switch to Confidence tab with experiment data
+  const handlePromoteToConfidence = (
+    ideaTitle: string, 
+    hypothesis: string, 
+    startDate?: string, 
+    endDate?: string,
+    initialMetrics?: { reach: number; responses: number; sales: number },
+    initialMemo?: string
+  ) => {
+    setPromoteToConfidenceData({
+      ideaTitle,
+      testTitle: hypothesis, // Use hypothesis as default test title
+      startDate,
+      endDate,
+      initialMetrics,
+      initialMemo
+    });
+    setActiveTab('confidence');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // --- Derived State ---
   const filteredItems = useMemo(() => {
     return items
@@ -216,49 +215,19 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 pb-20 md:pb-8">
       
-      {/* 1. Header & Controls */}
+      {/* 1. Header & Tabs */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-4 pt-3 pb-2">
-          <div className="flex items-center justify-between mb-4">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex items-center justify-between py-3">
             <h1 className="text-lg font-bold text-slate-700 hidden sm:block">バンディット×ベイズ戦略</h1>
-            <h1 className="text-lg font-bold text-slate-700 sm:hidden">戦略ボード</h1>
             
-            {/* View Switcher Tabs */}
-            <div className="flex p-1 bg-slate-100 rounded-lg overflow-x-auto no-scrollbar">
-              <button
-                onClick={() => setCurrentView('matrix')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                  currentView === 'matrix' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <LayoutGrid size={16} />
-                戦略マップ
-              </button>
-              <button
-                onClick={() => setCurrentView('hypothesis')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                  currentView === 'hypothesis' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <FlaskConical size={16} />
-                仮説検証
-              </button>
-              <button
-                onClick={() => setCurrentView('confidence')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                  currentView === 'confidence' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <TrendingUp size={16} />
-                自信度分析
-              </button>
-            </div>
-          </div>
-
-          {/* Conditional Header Controls based on View */}
-          {currentView === 'matrix' && (
-            <div className="flex justify-end items-center pt-2">
-              {/* Data Controls */}
+            {/* Mobile Title or Spacer */}
+            <span className="sm:hidden font-bold text-slate-700 text-sm">
+              {activeTab === 'matrix' ? '戦略マップ' : activeTab === 'hypothesis' ? '仮説検証ボード' : '自信度分析'}
+            </span>
+            
+            {/* Matrix Controls (Only show on Matrix Tab) */}
+            {activeTab === 'matrix' ? (
               <div className="flex gap-2">
                 <button onClick={handleExport} title="Export JSON" className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors">
                   <Download size={18} />
@@ -271,16 +240,60 @@ const App: React.FC = () => {
                   <RefreshCw size={18} />
                 </button>
               </div>
-            </div>
-          )}
+            ) : (
+              // Spacer for layout consistency
+              <div className="w-20"></div>
+            )}
+          </div>
+
+          {/* Tab Navigation */}
+          <div className="flex space-x-1 sm:space-x-2 pb-2 overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => setActiveTab('matrix')}
+              className={`
+                flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
+                ${activeTab === 'matrix' 
+                  ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200' 
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}
+              `}
+            >
+              <LayoutGrid size={16} />
+              戦略マップ
+            </button>
+            <button
+              onClick={() => setActiveTab('hypothesis')}
+              className={`
+                flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
+                ${activeTab === 'hypothesis' 
+                  ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200' 
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}
+              `}
+            >
+              <FlaskConical size={16} />
+              仮説検証
+            </button>
+            <button
+              onClick={() => setActiveTab('confidence')}
+              className={`
+                flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap
+                ${activeTab === 'confidence' 
+                  ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200' 
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}
+              `}
+            >
+              <TrendingUp size={16} />
+              自信度分析
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 pt-6 space-y-8">
         
-        {currentView === 'matrix' && (
-          <>
-            {/* 2. Input Form (Moved to Top) */}
+        {/* Tab 1: Strategy Map */}
+        {activeTab === 'matrix' && (
+          <div className="space-y-8 animate-in fade-in">
+            {/* Input Form */}
             <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
               <form onSubmit={handleAddIdea} className="space-y-4">
                 <div>
@@ -349,7 +362,7 @@ const App: React.FC = () => {
               </form>
             </section>
 
-            {/* 3. Matrix Visualization */}
+            {/* Matrix Visualization */}
             <section>
               <div className="flex items-center justify-between mb-4">
                 <input
@@ -361,7 +374,7 @@ const App: React.FC = () => {
                 />
               </div>
 
-              {/* Filter Bar - Moved here for better visibility */}
+              {/* Filter Bar */}
               <div className="flex flex-wrap gap-2 mb-4">
                 {Object.values(ZONES).map((zone) => (
                   <button
@@ -380,38 +393,43 @@ const App: React.FC = () => {
               <IdeaMatrix items={filteredItems} onItemClick={handleChartItemClick} />
             </section>
 
-            {/* 4. List View */}
+            {/* List View */}
             <section>
               <div className="flex items-center justify-between mb-4">
-                 <h2 className="font-bold text-slate-700">優先度順リスト</h2>
-                 <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">{filteredItems.length} items</span>
+                  <h2 className="font-bold text-slate-700">優先度順リスト</h2>
+                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">{filteredItems.length} items</span>
               </div>
               <IdeaList 
                 items={filteredItems} 
                 onDelete={handleDelete} 
                 highlightedId={highlightedId}
-                onPromote={handleMoveToHypothesis}
+                onPromote={handlePromoteToHypothesis}
               />
             </section>
-          </>
+          </div>
         )}
 
-        {currentView === 'hypothesis' && (
-          <HypothesisBoard 
-            initialIdea={hypothesisInitialIdea}
-            onPromoteToConfidence={handleMoveToConfidence}
-          />
+        {/* Tab 2: Hypothesis Board */}
+        {activeTab === 'hypothesis' && (
+          <div className="animate-in fade-in">
+            <HypothesisBoard 
+              initialIdea={promoteIdeaTitle} 
+              onPromoteToConfidence={handlePromoteToConfidence}
+            />
+          </div>
         )}
 
-        {currentView === 'confidence' && (
-          <ConfidenceBoard 
-            initialValues={confidenceInitialData}
-          />
+        {/* Tab 3: Confidence Board */}
+        {activeTab === 'confidence' && (
+          <div className="animate-in fade-in">
+            <ConfidenceBoard initialValues={promoteToConfidenceData} />
+          </div>
         )}
+
       </main>
 
-      {/* Floating Action Button for Mobile (Only in Matrix View) */}
-      {currentView === 'matrix' && (
+      {/* Floating Action Button for Mobile (Matrix Only) */}
+      {activeTab === 'matrix' && (
         <div className="md:hidden fixed bottom-6 right-6 z-50">
           <button
             onClick={() => {
